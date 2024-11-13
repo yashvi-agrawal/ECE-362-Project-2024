@@ -409,10 +409,93 @@ int main() {
     setbuf(stdout,0);
     setbuf(stderr,0);
     // command_shell();
-    // exec(LCD_Clear(WHITE));
-    enable_sdcard();
-    init_lcd_spi();
-    LCD_DrawFillRectangle(0,0,200,200,GREEN);
+    LCD_Setup();
+    // LCD_DrawFillRectangle(0,0,320,320,WHITE);    
+    // LCD_DrawFillRectangle(0,0,120,320,BLACK);
+    workerLCD();
+
+}
+
+void workerLCD()
+{
+    LCD_DrawFillRectangle(0,0,320,320,WHITE);
+    LCD_DrawLine(120,0,120,320,BLACK);
+
+    // srand(time(NULL));
+    // void (*arrowFunctions[])() = {drawUP, drawDOWN, drawLEFT, drawRIGHT};
+
+
+    for(int i = 0; i < 320; i++) //up arrow
+    {
+        if(170-i <= 0) break;
+        
+        LCD_DrawLine(180, 170-i, 180, 220-i, BLACK);
+        LCD_DrawLine(180, 220-i, 150, 200-i, BLACK);
+        LCD_DrawLine(180, 220-i, 210, 200-i, BLACK); 
+
+        // LCD_DrawLine(180, 220-i, 150, 200-i, WHITE);
+        // LCD_DrawLine(180, 220-i, 210, 200-i, WHITE);  
+        // LCD_DrawLine(180, 170-i, 180, 220-i, WHITE);
+
+        LCD_DrawFillRectangle(0,0,320,320,WHITE);
+        LCD_DrawLine(120,0,120,320,BLACK);
+        
+    }
+
+
+
+
+}
+
+void drawUP(int lr, int inc, int bw) // lr = left (0) or right (1) side arrow, inc = increment down by inc, bw = black or white
+{
+    if (lr == 0){ // left
+        LCD_DrawLine(180, 170 - inc, 180, 220 - inc, (bw == 0) ? BLACK : WHITE);
+        LCD_DrawLine(180, 220 - inc, 150, 200 - inc, (bw == 0) ? BLACK : WHITE); // up arrow
+        LCD_DrawLine(180, 220 - inc, 210, 200 - inc, (bw == 0) ? BLACK : WHITE);
+    } else { // right
+        LCD_DrawLine(180, 170 - inc, 180, 220 - inc, (bw == 0) ? BLACK : WHITE);
+        LCD_DrawLine(180, 220 - inc, 150, 200 - inc, (bw == 0) ? BLACK : WHITE); // up arrow
+        LCD_DrawLine(180, 220 - inc, 210, 200 - inc, (bw == 0) ? BLACK : WHITE);
+    }
+
+}
+
+void drawDOWN(char lr, int inc, char bw)
+{
+    if (lr == 0) {
+        LCD_DrawLine(180, 170 - inc, 180, 220 - inc, (bw == 0) ? BLACK : WHITE);
+        LCD_DrawLine(180, 170 - inc, 150, 190 - inc, (bw == 0) ? BLACK : WHITE); // down arrow
+        LCD_DrawLine(180, 170 - inc, 210, 190 - inc, (bw == 0) ? BLACK : WHITE);
+    } else {
+        LCD_DrawLine(180, 170 - inc, 180, 220 - inc, (bw == 0) ? BLACK : WHITE);
+        LCD_DrawLine(180, 170 - inc, 150, 190 - inc, (bw == 0) ? BLACK : WHITE); // down arrow
+        LCD_DrawLine(180, 170 - inc, 210, 190 - inc, (bw == 0) ? BLACK : WHITE);
+    }
+}
+
+void drawLEFT(char lr, int inc, char bw)
+{
+    if (lr == 0) {
+        LCD_DrawLine(155, 220 - inc, 205, 220 - inc, (bw == 0) ? BLACK : WHITE);
+        LCD_DrawLine(205, 220 - inc, 185, 190 - inc, (bw == 0) ? BLACK : WHITE); // left arrow
+        LCD_DrawLine(205, 220 - inc, 185, 250 - inc, (bw == 0) ? BLACK : WHITE);
+    } else {
+        LCD_DrawLine(155, 220 - inc, 205, 220 - inc, (bw == 0) ? BLACK : WHITE);
+        LCD_DrawLine(205, 220 - inc, 185, 190 - inc, (bw == 0) ? BLACK : WHITE); // left arrow
+        LCD_DrawLine(205, 220 - inc, 185, 250 - inc, (bw == 0) ? BLACK : WHITE);
+    }
+}
+
+void drawRIGHT(char lr, int inc, char bw)
+{
+    if (lr == 0) {
+    LCD_DrawLine(155,220-inc,205,220-inc, (bw == 0)? BLACK:WHITE);
+    LCD_DrawLine(155,220-inc,175,190-inc, (bw == 0)? BLACK:WHITE); //right arrow
+    LCD_DrawLine(155,220-inc,175,250-inc, (bw == 0)? BLACK:WHITE);    
+    } else {
+        
+    }
 }
 
 #endif
