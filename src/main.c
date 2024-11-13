@@ -260,6 +260,9 @@ int main() {
 #include "tty.h"
 #include "lcd.h"
 
+int inc = 0;
+int randomIndex; 
+
 // TODO DMA data structures
 #define FIFOSIZE 16
 char serfifo[FIFOSIZE];
@@ -410,44 +413,51 @@ int main() {
     setbuf(stderr,0);
     // command_shell();
     LCD_Setup();
-    // LCD_DrawFillRectangle(0,0,320,320,WHITE);    
-    // LCD_DrawFillRectangle(0,0,120,320,BLACK);
-    workerLCD();
+    srand(time(0));
+
+    initialLCD();
+    setup_tim7();
+
+
+    
+    // workerLCD();
 
 }
 
-void workerLCD()
+void initialLCD()
 {
     LCD_DrawFillRectangle(0,0,320,320,WHITE);
     LCD_DrawLine(120,0,120,320,BLACK);
+    
+
 
     // srand(time(NULL));
     // void (*arrowFunctions[])() = {drawUP, drawDOWN, drawLEFT, drawRIGHT};
 
 
-    for(int i = 0; i < 320; i++) //up arrow
-    {
-        if(170-i <= 0) break;
+    // for(int i = 0; i < 320; i++) //up arrow
+    // {
+    //     if(170-i <= 0) break;
         
-        LCD_DrawLine(180, 170-i, 180, 220-i, BLACK);
-        LCD_DrawLine(180, 220-i, 150, 200-i, BLACK);
-        LCD_DrawLine(180, 220-i, 210, 200-i, BLACK); 
+    //     LCD_DrawLine(180, 170-i, 180, 220-i, BLACK);
+    //     LCD_DrawLine(180, 220-i, 150, 200-i, BLACK);
+    //     LCD_DrawLine(180, 220-i, 210, 200-i, BLACK); 
 
-        // LCD_DrawLine(180, 220-i, 150, 200-i, WHITE);
-        // LCD_DrawLine(180, 220-i, 210, 200-i, WHITE);  
-        // LCD_DrawLine(180, 170-i, 180, 220-i, WHITE);
+    //     LCD_DrawLine(180, 220-i, 150, 200-i, WHITE);
+    //     LCD_DrawLine(180, 220-i, 210, 200-i, WHITE);  
+    //     LCD_DrawLine(180, 170-i, 180, 220-i, WHITE);
 
-        LCD_DrawFillRectangle(0,0,320,320,WHITE);
-        LCD_DrawLine(120,0,120,320,BLACK);
+    //     // LCD_DrawFillRectangle(0,0,320,320,WHITE);
+    //     // LCD_DrawLine(120,0,120,320,BLACK);
         
-    }
+    // }
 
 
 
 
 }
 
-void drawUP(int lr, int inc, int bw) // lr = left (0) or right (1) side arrow, inc = increment down by inc, bw = black or white
+void drawUP(int lr, int bw) // lr = left (0) or right (1) side arrow, inc = increment down by inc, bw = black or white
 {
     if (lr == 0){ // left
         LCD_DrawLine(180, 170 - inc, 180, 220 - inc, (bw == 0) ? BLACK : WHITE);
@@ -461,7 +471,7 @@ void drawUP(int lr, int inc, int bw) // lr = left (0) or right (1) side arrow, i
 
 }
 
-void drawDOWN(char lr, int inc, char bw)
+void drawDOWN(int lr, int bw)
 {
     if (lr == 0) {
         LCD_DrawLine(180, 170 - inc, 180, 220 - inc, (bw == 0) ? BLACK : WHITE);
@@ -474,7 +484,7 @@ void drawDOWN(char lr, int inc, char bw)
     }
 }
 
-void drawLEFT(char lr, int inc, char bw)
+void drawLEFT(int lr, int bw)
 {
     if (lr == 0) {
         LCD_DrawLine(155, 220 - inc, 205, 220 - inc, (bw == 0) ? BLACK : WHITE);
@@ -487,15 +497,63 @@ void drawLEFT(char lr, int inc, char bw)
     }
 }
 
-void drawRIGHT(char lr, int inc, char bw)
+void drawRIGHT(int lr, int bw)
 {
     if (lr == 0) {
-    LCD_DrawLine(155,220-inc,205,220-inc, (bw == 0)? BLACK:WHITE);
-    LCD_DrawLine(155,220-inc,175,190-inc, (bw == 0)? BLACK:WHITE); //right arrow
-    LCD_DrawLine(155,220-inc,175,250-inc, (bw == 0)? BLACK:WHITE);    
+    LCD_DrawLine(155,220-inc,205,220-inc, (bw == 0) ? BLACK : WHITE);
+    LCD_DrawLine(155,220-inc,175,190-inc, (bw == 0) ? BLACK : WHITE); //right arrow
+    LCD_DrawLine(155,220-inc,175,250-inc, (bw == 0) ? BLACK : WHITE);    
     } else {
-        
+    LCD_DrawLine(155,220-inc,205,220-inc, (bw == 0) ? BLACK : WHITE);
+    LCD_DrawLine(155,220-inc,175,190-inc, (bw == 0) ? BLACK : WHITE); //right arrow
+    LCD_DrawLine(155,220-inc,175,250-inc, (bw == 0) ? BLACK : WHITE);    
     }
+}
+
+// void drawALL(int lr, int bw)
+// {
+//     drawUP(lr, bw);
+//     drawDOWN(lr, bw);
+//     drawLEFT(lr, bw);
+//     drawRIGHT(lr, bw);
+// }
+
+
+void TIM7_IRQHandler()
+{
+    TIM7 -> SR &= ~TIM_SR_UIF;
+    void (*arrowFunctions[])(int, int) = {drawLEFT, drawDOWN, drawUP, drawRIGHT};
+
+    // LCD_DrawFillRectangle(150,0,210,320,WHITE); //erasure left
+    // drawALL(0,1);
+    (*arrowFunctions[randomIndex])(0, 1);
+    inc++;
+
+    if (inc == 150)
+    {
+        inc = 0;
+        return;
+    }
+
+    if (inc == 0)
+    {
+        randomIndex = rand() % 4;
+        (*arrowFunctions[randomIndex])(0, 0);
+        inc++;
+    } else
+    {
+        (*arrowFunctions[randomIndex])(0, 0);
+    }
+}
+
+void setup_tim7()
+{
+    RCC->APB1ENR |= RCC_APB1ENR_TIM7EN;
+    TIM7 -> PSC = 1000000 - 1;
+    TIM7 -> ARR = 24 - 1;
+    TIM7 -> DIER |= TIM_DIER_UIE;
+    NVIC -> ISER[0] = 1 << TIM7_IRQn;
+    TIM7 -> CR1 |= TIM_CR1_CEN;
 }
 
 #endif
