@@ -437,12 +437,14 @@ void initialLCD()
 
 }
 
+// screen is 240 x 320
+
 void drawUP(int lr, int bw) // lr = left (0) or right (1) side arrow, inc = increment down by inc, bw = black or white
 {
     if (lr == 0){ // left
-        LCD_DrawLine(180, 170 - inc, 180, 220 - inc, (bw == 0) ? BLACK : WHITE);
-        LCD_DrawLine(180, 220 - inc, 150, 200 - inc, (bw == 0) ? BLACK : WHITE); // up arrow
-        LCD_DrawLine(180, 220 - inc, 210, 200 - inc, (bw == 0) ? BLACK : WHITE);
+        LCD_DrawLine(180, 320 - inc, 180, 270 - inc, (bw == 0) ? BLACK : WHITE);
+        LCD_DrawLine(180, 320 - inc, 155, 295 - inc, (bw == 0) ? BLACK : WHITE); // up arrow
+        LCD_DrawLine(180, 320 - inc, 205, 295 - inc, (bw == 0) ? BLACK : WHITE);
     } else { // right
         LCD_DrawLine(180, 170 - inc, 180, 220 - inc, (bw == 0) ? BLACK : WHITE);
         LCD_DrawLine(180, 220 - inc, 150, 200 - inc, (bw == 0) ? BLACK : WHITE); // up arrow
@@ -454,9 +456,9 @@ void drawUP(int lr, int bw) // lr = left (0) or right (1) side arrow, inc = incr
 void drawDOWN(int lr, int bw)
 {
     if (lr == 0) {
-        LCD_DrawLine(180, 170 - inc, 180, 220 - inc, (bw == 0) ? BLACK : WHITE);
-        LCD_DrawLine(180, 170 - inc, 150, 190 - inc, (bw == 0) ? BLACK : WHITE); // down arrow
-        LCD_DrawLine(180, 170 - inc, 210, 190 - inc, (bw == 0) ? BLACK : WHITE);
+        LCD_DrawLine(180, 320 - inc, 180, 270 - inc, (bw == 0) ? BLACK : WHITE); // line
+        LCD_DrawLine(180, 270 - inc, 155, 295 - inc, (bw == 0) ? BLACK : WHITE); // down arrow
+        LCD_DrawLine(180, 270 - inc, 205, 295 - inc, (bw == 0) ? BLACK : WHITE);
     } else {
         LCD_DrawLine(180, 170 - inc, 180, 220 - inc, (bw == 0) ? BLACK : WHITE);
         LCD_DrawLine(180, 170 - inc, 150, 190 - inc, (bw == 0) ? BLACK : WHITE); // down arrow
@@ -467,9 +469,9 @@ void drawDOWN(int lr, int bw)
 void drawLEFT(int lr, int bw)
 {
     if (lr == 0) {
-        LCD_DrawLine(155, 220 - inc, 205, 220 - inc, (bw == 0) ? BLACK : WHITE);
-        LCD_DrawLine(205, 220 - inc, 185, 190 - inc, (bw == 0) ? BLACK : WHITE); // left arrow
-        LCD_DrawLine(205, 220 - inc, 185, 250 - inc, (bw == 0) ? BLACK : WHITE);
+        LCD_DrawLine(255, 295 - inc, 205, 295 - inc, (bw == 0) ? BLACK : WHITE);
+        LCD_DrawLine(305, 295 - inc, 185, 290 - inc, (bw == 0) ? BLACK : WHITE); // left arrow
+        LCD_DrawLine(305, 295 - inc, 185, 350 - inc, (bw == 0) ? BLACK : WHITE);
     } else {
         LCD_DrawLine(155, 220 - inc, 205, 220 - inc, (bw == 0) ? BLACK : WHITE);
         LCD_DrawLine(205, 220 - inc, 185, 190 - inc, (bw == 0) ? BLACK : WHITE); // left arrow
@@ -480,26 +482,26 @@ void drawLEFT(int lr, int bw)
 void drawRIGHT(int lr, int bw)
 {
     if (lr == 0) {
-    LCD_DrawLine(155,220-inc,205,220-inc, (bw == 0) ? BLACK : WHITE);
-    LCD_DrawLine(155,220-inc,175,190-inc, (bw == 0) ? BLACK : WHITE); //right arrow
-    LCD_DrawLine(155,220-inc,175,250-inc, (bw == 0) ? BLACK : WHITE);    
+        LCD_DrawLine(155, 220 - inc, 205, 220 - inc, (bw == 0) ? BLACK : WHITE);
+        LCD_DrawLine(155, 220 - inc, 175, 190 - inc, (bw == 0) ? BLACK : WHITE); // right arrow
+        LCD_DrawLine(155, 220 - inc, 175, 250 - inc, (bw == 0) ? BLACK : WHITE);
     } else {
-    LCD_DrawLine(155,220-inc,205,220-inc, (bw == 0) ? BLACK : WHITE);
-    LCD_DrawLine(155,220-inc,175,190-inc, (bw == 0) ? BLACK : WHITE); //right arrow
-    LCD_DrawLine(155,220-inc,175,250-inc, (bw == 0) ? BLACK : WHITE);    
+        LCD_DrawLine(155, 220 - inc, 205, 220 - inc, (bw == 0) ? BLACK : WHITE);
+        LCD_DrawLine(155, 220 - inc, 175, 190 - inc, (bw == 0) ? BLACK : WHITE); // right arrow
+        LCD_DrawLine(155, 220 - inc, 175, 250 - inc, (bw == 0) ? BLACK : WHITE);
     }
 }
 
 void TIM7_IRQHandler()
 {
     TIM7 -> SR &= ~TIM_SR_UIF;
-    void (*arrowFunctions[])(int, int) = {drawLEFT, drawDOWN, drawUP, drawRIGHT};
+    void (*arrowFunctions[])(int, int) = {drawUP, drawDOWN, drawUP, drawDOWN};
 
     (*arrowFunctions[randomIndex])(0, 1);
 
     inc++;
 
-    if (inc == 150)
+    if (inc == 250)
     {
         inc = 0;
         return;
