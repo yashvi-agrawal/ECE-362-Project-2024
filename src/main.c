@@ -262,6 +262,7 @@ int main() {
 
 int inc = 0;
 int randomIndex = 0; 
+int randomLR;
 
 // TODO DMA data structures
 #define FIFOSIZE 16
@@ -446,11 +447,10 @@ void drawUP(int lr, int bw) // lr = left (0) or right (1) side arrow, inc = incr
         LCD_DrawLine(180, 320 - inc, 155, 295 - inc, (bw == 0) ? BLACK : WHITE); // up arrow
         LCD_DrawLine(180, 320 - inc, 205, 295 - inc, (bw == 0) ? BLACK : WHITE);
     } else { // right
-        LCD_DrawLine(180, 170 - inc, 180, 220 - inc, (bw == 0) ? BLACK : WHITE);
-        LCD_DrawLine(180, 220 - inc, 150, 200 - inc, (bw == 0) ? BLACK : WHITE); // up arrow
-        LCD_DrawLine(180, 220 - inc, 210, 200 - inc, (bw == 0) ? BLACK : WHITE);
+        LCD_DrawLine(60, 320 - inc, 60, 270 - inc, (bw == 0) ? BLACK : WHITE);
+        LCD_DrawLine(60, 320 - inc, 35, 295 - inc, (bw == 0) ? BLACK : WHITE); // up arrow
+        LCD_DrawLine(60, 320 - inc, 85, 295 - inc, (bw == 0) ? BLACK : WHITE);
     }
-
 }
 
 void drawDOWN(int lr, int bw)
@@ -460,22 +460,22 @@ void drawDOWN(int lr, int bw)
         LCD_DrawLine(180, 270 - inc, 155, 295 - inc, (bw == 0) ? BLACK : WHITE); // down arrow
         LCD_DrawLine(180, 270 - inc, 205, 295 - inc, (bw == 0) ? BLACK : WHITE);
     } else {
-        LCD_DrawLine(180, 170 - inc, 180, 220 - inc, (bw == 0) ? BLACK : WHITE);
-        LCD_DrawLine(180, 170 - inc, 150, 190 - inc, (bw == 0) ? BLACK : WHITE); // down arrow
-        LCD_DrawLine(180, 170 - inc, 210, 190 - inc, (bw == 0) ? BLACK : WHITE);
+        LCD_DrawLine(60, 320 - inc, 60, 270 - inc, (bw == 0) ? BLACK : WHITE); // line
+        LCD_DrawLine(60, 270 - inc, 35, 295 - inc, (bw == 0) ? BLACK : WHITE); // down arrow
+        LCD_DrawLine(60, 270 - inc, 85, 295 - inc, (bw == 0) ? BLACK : WHITE);
     }
 }
 
 void drawLEFT(int lr, int bw)
 {
     if (lr == 0) {
-        LCD_DrawLine(255, 295 - inc, 205, 295 - inc, (bw == 0) ? BLACK : WHITE);
-        LCD_DrawLine(305, 295 - inc, 185, 290 - inc, (bw == 0) ? BLACK : WHITE); // left arrow
-        LCD_DrawLine(305, 295 - inc, 185, 350 - inc, (bw == 0) ? BLACK : WHITE);
-    } else {
         LCD_DrawLine(155, 220 - inc, 205, 220 - inc, (bw == 0) ? BLACK : WHITE);
         LCD_DrawLine(205, 220 - inc, 185, 190 - inc, (bw == 0) ? BLACK : WHITE); // left arrow
         LCD_DrawLine(205, 220 - inc, 185, 250 - inc, (bw == 0) ? BLACK : WHITE);
+    } else {
+        LCD_DrawLine(35, 220 - inc, 85, 220 - inc, (bw == 0) ? BLACK : WHITE);
+        LCD_DrawLine(85, 220 - inc, 65, 190 - inc, (bw == 0) ? BLACK : WHITE); // left arrow
+        LCD_DrawLine(85, 220 - inc, 65, 250 - inc, (bw == 0) ? BLACK : WHITE);
     }
 }
 
@@ -486,33 +486,34 @@ void drawRIGHT(int lr, int bw)
         LCD_DrawLine(155, 220 - inc, 175, 190 - inc, (bw == 0) ? BLACK : WHITE); // right arrow
         LCD_DrawLine(155, 220 - inc, 175, 250 - inc, (bw == 0) ? BLACK : WHITE);
     } else {
-        LCD_DrawLine(155, 220 - inc, 205, 220 - inc, (bw == 0) ? BLACK : WHITE);
-        LCD_DrawLine(155, 220 - inc, 175, 190 - inc, (bw == 0) ? BLACK : WHITE); // right arrow
-        LCD_DrawLine(155, 220 - inc, 175, 250 - inc, (bw == 0) ? BLACK : WHITE);
+        LCD_DrawLine(35,220-inc,85,220-inc, (bw == 0) ? BLACK : WHITE);
+        LCD_DrawLine(35,220-inc,55,190-inc, (bw == 0) ? BLACK : WHITE); //right arrow
+        LCD_DrawLine(35,220-inc,55,250-inc, (bw == 0) ? BLACK : WHITE);    
     }
 }
 
 void TIM7_IRQHandler()
 {
     TIM7 -> SR &= ~TIM_SR_UIF;
-    void (*arrowFunctions[])(int, int) = {drawUP, drawDOWN, drawUP, drawDOWN};
+    void (*arrowFunctions[])(int, int) = {drawUP, drawDOWN, drawLEFT, drawRIGHT};
 
-    (*arrowFunctions[randomIndex])(0, 1);
+    (*arrowFunctions[randomIndex])(randomLR, 1);
 
     inc++;
 
-    if (inc == 250)
+    if (inc == 150)
     {
         inc = 0;
         return;
     }
     if ((inc-1) == 0) {
         randomIndex = rand() % 4;
-        (*arrowFunctions[randomIndex])(0, 0);
+        randomLR = rand() % 2;
+        (*arrowFunctions[randomIndex])(randomLR, 0);
     }
     else
     {
-        (*arrowFunctions[randomIndex])(0, 0);
+        (*arrowFunctions[randomIndex])(randomLR, 0);
     }
 }
 
