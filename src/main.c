@@ -261,7 +261,7 @@ int main() {
 #include "lcd.h"
 
 int inc = 0;
-int randomIndex; 
+int randomIndex = 0; 
 
 // TODO DMA data structures
 #define FIFOSIZE 16
@@ -404,26 +404,6 @@ void init_lcd_spi()
 }
 
 
-int main() {
-    internal_clock();
-    init_usart5();
-    enable_tty_interrupt();
-    setbuf(stdin,0);
-    setbuf(stdout,0);
-    setbuf(stderr,0);
-    // command_shell();
-    LCD_Setup();
-    srand(time(0));
-
-    initialLCD();
-    setup_tim7();
-
-
-    
-    // workerLCD();
-
-}
-
 void initialLCD()
 {
     LCD_DrawFillRectangle(0,0,320,320,WHITE);
@@ -510,23 +490,13 @@ void drawRIGHT(int lr, int bw)
     }
 }
 
-// void drawALL(int lr, int bw)
-// {
-//     drawUP(lr, bw);
-//     drawDOWN(lr, bw);
-//     drawLEFT(lr, bw);
-//     drawRIGHT(lr, bw);
-// }
-
-
 void TIM7_IRQHandler()
 {
     TIM7 -> SR &= ~TIM_SR_UIF;
     void (*arrowFunctions[])(int, int) = {drawLEFT, drawDOWN, drawUP, drawRIGHT};
 
-    // LCD_DrawFillRectangle(150,0,210,320,WHITE); //erasure left
-    // drawALL(0,1);
     (*arrowFunctions[randomIndex])(0, 1);
+
     inc++;
 
     if (inc == 150)
@@ -534,13 +504,11 @@ void TIM7_IRQHandler()
         inc = 0;
         return;
     }
-
-    if (inc == 0)
-    {
+    if ((inc-1) == 0) {
         randomIndex = rand() % 4;
         (*arrowFunctions[randomIndex])(0, 0);
-        inc++;
-    } else
+    }
+    else
     {
         (*arrowFunctions[randomIndex])(0, 0);
     }
@@ -558,3 +526,23 @@ void setup_tim7()
 
 #endif
 
+
+int main() {
+    internal_clock();
+    init_usart5();
+    enable_tty_interrupt();
+    setbuf(stdin,0);
+    setbuf(stdout,0);
+    setbuf(stderr,0);
+    // command_shell();
+    LCD_Setup();
+    srand(time(0));
+
+    initialLCD();
+    setup_tim7();
+
+
+    
+    // workerLCD();
+
+}
