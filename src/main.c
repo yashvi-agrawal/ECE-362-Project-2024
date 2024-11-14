@@ -303,6 +303,14 @@ int randomIndex;
 char serfifo[FIFOSIZE];
 int seroffset = 0;
 
+// DAC
+#define N 1000
+#define RATE 20000
+short int wavetable[N];
+int step0 = 0;
+int offset0 = 0;
+uint32_t volume = 2048;
+
 void USART3_8_IRQHandler(void)
 {
     while (DMA2_Channel2->CNDTR != sizeof serfifo - seroffset)
@@ -450,10 +458,26 @@ void init_lcd_spi()
 // Write the pattern for a complete cycle of a sine wave into the
 // wavetable[] array.
 //===========================================================================
+unsigned char buffer[10];
+FILE *ptr;
+
 void init_wavetable(void)
 {
-    for (int i = 0; i < N; i++)
+    ptr = fopen("test.bin", "rb"); // r for read, b for binary
+    if (ptr == NULL)
+    {
+        return;
+    }
+
+    fread(buffer, sizeof(buffer), 1, ptr);
+    fclose(ptr);
+    for (int i = 0; i < N && i < sizeof(buffer); i++)
+    {
+        wavetable[i] = buffer[i];
+    }
     // wavetable[i] = 32767 * sin(2 * M_PI * i / N);
+    // TODO
+    // read the data from a file on the sd card
 }
 
 //============================================================================
