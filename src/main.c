@@ -18,6 +18,14 @@ const char* username = "agraw192";
 #include "stm32f0xx.h"
 #include <stdint.h>
 
+
+int msg_index = 0;
+uint16_t msg[8] = {0x0000, 0x0100, 0x0200, 0x0300, 0x0400, 0x0500, 0x0600, 0x0700};
+extern const char font[];
+extern char keymap;
+char *keymap_arr = &keymap;
+extern uint8_t col;
+
 void internal_clock();
 
 // Uncomment only one of the following to test each step
@@ -160,8 +168,6 @@ int main() {
 }
 #endif
 
-#ifdef STEP4
-
 #include <stdio.h>
 #include "fifo.h"
 #include "tty.h"
@@ -231,6 +237,7 @@ void USART3_8_IRQHandler(void) {
 }
 
 // TODO Remember to look up for the proper name of the ISR function
+#ifdef STEP5
 
 int main() {
     internal_clock();
@@ -529,9 +536,170 @@ void setup_tim7()
 
 #endif
 
+#ifdef STEP 6
+
+void init_spi2(void)
+{
+    RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
+    GPIOB->MODER &= ~(GPIO_MODER_MODER15_0 | GPIO_MODER_MODER12_0 | GPIO_MODER_MODER13_0);
+    GPIOB->MODER |= GPIO_MODER_MODER15_1 | GPIO_MODER_MODER12_1 | GPIO_MODER_MODER13_1;
+    GPIOB->AFR[1] &= ~0xf0ff0000;
+    RCC->APB1ENR |= RCC_APB1ENR_SPI2EN;
+    SPI2->CR1 &= ~SPI_CR1_SPE;
+    SPI2->CR1 |= SPI_CR1_BR; 
+    SPI2->CR2 = SPI_CR2_DS_3 | SPI_CR2_DS_2 | SPI_CR2_DS_1 | SPI_CR2_DS_0;
+    SPI2->CR1 |= SPI_CR1_MSTR; 
+    SPI2->CR2 |= SPI_CR2_SSOE; 
+    SPI2->CR2 |= SPI_CR2_NSSP;  
+    SPI2->CR2 |= SPI_CR2_TXDMAEN; 
+    SPI2->CR1 |= SPI_CR1_SPE; 
+}
+
+void spi2_setup_dma(void)
+{
+    RCC->AHBENR |= RCC_AHBENR_DMA1EN;
+    DMA1_Channel5->CMAR = (uint32_t)(&msg); 
+    DMA1_Channel5->CPAR = (uint32_t)(&(SPI2->DR));
+    DMA1_Channel5->CNDTR = 8;
+    DMA1_Channel5->CCR |= DMA_CCR_DIR;
+    DMA1_Channel5->CCR |= DMA_CCR_MINC;
+    DMA1_Channel5->CCR &= ~DMA_CCR_MSIZE_1;
+    DMA1_Channel5->CCR |= DMA_CCR_MSIZE_0;
+    DMA1_Channel5->CCR &= ~DMA_CCR_PSIZE_1;
+    DMA1_Channel5->CCR |= DMA_CCR_PSIZE_0;
+    DMA1_Channel5->CCR |= DMA_CCR_CIRC;
+}
+
+void spi2_enable_dma(void)
+{
+    DMA1_Channel5->CCR |= DMA_CCR_EN;
+}
+
+void enable_ports()
+{
+  GPIOC->MODER &= ~(GPIO_MODER_MODER4 | GPIO_MODER_MODER5 | GPIO_MODER_MODER6 | GPIO_MODER_MODER7); 
+  GPIOC->MODER |= (GPIO_MODER_MODER4_0 | GPIO_MODER_MODER5_0 | GPIO_MODER_MODER6_0 | GPIO_MODER_MODER7_0);
+
+  //inputs for port C
+  GPIOC->MODER &= ~(GPIO_MODER_MODER0 | GPIO_MODER_MODER1 | GPIO_MODER_MODER2 | GPIO_MODER_MODER3); 
+
+  // pull down for port C
+  GPIOC->PUPDR |= GPIO_PUPDR_PUPDR0_1; 
+  GPIOC->PUPDR &= ~GPIO_PUPDR_PUPDR0_0; 
+  GPIOC->PUPDR |= GPIO_PUPDR_PUPDR1_1;
+  GPIOC->PUPDR &= ~GPIO_PUPDR_PUPDR1_0;
+  GPIOC->PUPDR |= GPIO_PUPDR_PUPDR2_1;
+  GPIOC->PUPDR &= ~GPIO_PUPDR_PUPDR2_0;
+  GPIOC->PUPDR |= GPIO_PUPDR_PUPDR3_1;
+  GPIOC->PUPDR &= ~GPIO_PUPDR_PUPDR3_0;
+}
+
+int c = 0; 
+void drive_column(int c)
+{
+    GPIOC->BSRR = (1 << (7 + 16) | 1 << (6 + 16) | 1 << (5 + 16) | 1 << (4 + 16)); 
+    GPIOC->BSRR = 1 << ((0b11 & c) + 4);  
+}
+
+int read_rows()
+{
+    return GPIOC->IDR &= (1 << 0 | 1 << 1 | 1 << 2 | 1 << 3);  
+}
+
+char rows_to_key(int rows)
+{
+  if (rows & 1)
+  {
+    rows = 0; 
+  }
+  else if (rows & 2)
+  {
+    rows = 1; 
+  }
+  else if (rows & 4)
+  {
+    rows = 2; 
+  }
+  else if (rows & 8)
+  {
+    rows = 3; 
+  }
+  int col_val = col*4 + rows; 
+  return keymap_arr[col_val]; 
+
+}
+
+char handle_input() {
+    for (int col = 0; col < 4; col++) {
+        drive_column(col); 
+        int rows = read_rows(); 
+        if (rows) 
+        {
+            return rows_to_key(rows, col);
+        }
+    }
+    return '\0'; 
+}
+
+int score = 0; 
+void update_score(falling_key, msg) {
+    char user_input = handle_input();  
+
+    // Check if the pressed key matches the falling key
+    if (user_input == falling_key) 
+    {
+        score++;  
+    } 
+    else 
+    {
+        score--;  
+    }
+
+    if (score < 0)
+    {
+        score = 0;
+    }
+   
+    if (score > 999) 
+    {
+        score = 999;
+    }
+
+    msg[5] = font['0' + (score / 100) % 10]; 
+    msg[6] = font['0' + (score / 10) % 10];  
+    msg[7] = font['0' + score % 10];          
+}
+
+void setup_tim14()
+{ 
+    RCC->APB1ENR |= RCC_APB1ENR_TIM14EN; 
+    //set prescaler and arr
+    TIM14 -> PSC = 1000000 - 1;
+    TIM14 -> ARR = 24 - 1;
+    TIM14->DIER |= TIM_DIER_UIE; 
+    NVIC->ISER[0] = 1 << TIM14_IRQn;  
+    TIM14->CR1 |= TIM_CR1_CEN;
+}
+
+void TIM14_IRQHandler()
+{
+  TIM14->SR &= ~TIM_SR_UIF;  
+  handle_input(); 
+  update_score(); 
+}
+
+#endif 
 
 int main() {
     internal_clock();
+    msg[0] |= font['S'];
+    msg[1] |= font['C'];
+    msg[2] |= font['O'];
+    msg[3] |= font['R'];
+    msg[4] |= font['E'];
+    msg[5] |= font['0'];
+    msg[6] |= font['0'];
+    msg[7] |= font['0'];
     init_usart5();
     enable_tty_interrupt();
     setbuf(stdin,0);
