@@ -636,14 +636,14 @@ char handle_input() {
         int rows = read_rows(); 
         if (rows) 
         {
-            return rows_to_key(rows, col);
+            return rows_to_key(rows);
         }
     }
     return '\0'; 
 }
 
 int score = 0; 
-void update_score(falling_key, msg) {
+void update_score(falling_key) {
     char user_input = handle_input();  
 
     // Check if the pressed key matches the falling key
@@ -666,9 +666,9 @@ void update_score(falling_key, msg) {
         score = 999;
     }
 
-    msg[5] = font['0' + (score / 100) % 10]; 
-    msg[6] = font['0' + (score / 10) % 10];  
-    msg[7] = font['0' + score % 10];          
+    msg[5] |= font['0' + (score / 100) % 10]; 
+    msg[6] |= font['0' + (score / 10) % 10];  
+    msg[7] |= font['0' + score % 10];          
 }
 
 void setup_tim14()
