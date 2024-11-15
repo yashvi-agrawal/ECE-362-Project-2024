@@ -33,6 +33,7 @@ void internal_clock();
 // #define STEP2
 // #define STEP3
 // #define STEP4
+#define STEP 6 
 #define SHELL
 
 void init_usart5() {
@@ -689,6 +690,8 @@ void TIM14_IRQHandler()
 }
 
 #endif 
+
+
 
 int main() {
     internal_clock();
