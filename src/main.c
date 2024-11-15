@@ -550,3 +550,8 @@ int main() {
     // workerLCD();
 
 }
+
+void newFunc
+{
+    printf("hello");
+}
