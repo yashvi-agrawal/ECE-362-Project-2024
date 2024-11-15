@@ -25,6 +25,8 @@ extern const char font[];
 extern char keymap;
 char *keymap_arr = &keymap;
 extern uint8_t col;
+char falling_key = '7'; 
+const char arrow_chars[4] = {'7', '5', '9', '0'};
 
 void internal_clock();
 
@@ -517,6 +519,7 @@ void TIM7_IRQHandler()
     if ((inc-1) == 0) {
         randomIndex = rand() % 4;
         randomLR = rand() % 2;
+        falling_key = arrow_chars[randomIndex]; 
         (*arrowFunctions[randomIndex])(randomLR, 0);
     }
     else
@@ -671,6 +674,13 @@ void update_score(falling_key) {
     msg[7] |= font['0' + score % 10];          
 }
 
+void TIM14_IRQHandler()
+{
+  TIM14->SR &= ~TIM_SR_UIF;  
+  handle_input(); 
+  update_score(falling_key); 
+}
+
 void setup_tim14()
 { 
     RCC->APB1ENR |= RCC_APB1ENR_TIM14EN; 
@@ -682,15 +692,8 @@ void setup_tim14()
     TIM14->CR1 |= TIM_CR1_CEN;
 }
 
-void TIM14_IRQHandler()
-{
-  TIM14->SR &= ~TIM_SR_UIF;  
-  handle_input(); 
-  update_score(); 
-}
 
 #endif 
-
 
 
 int main() {
