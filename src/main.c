@@ -17,6 +17,8 @@ const char *username = "agraw192";
 
 #include "stm32f0xx.h"
 #include <stdint.h>
+#include <string.h>
+#include "commands.h"
 
 void internal_clock();
 
@@ -872,13 +874,22 @@ void init_tim6(void)
 
 int main(void)
 {
+    
     internal_clock();
+    init_usart5();
+    setbuf(stdin, 0);
+    setbuf(stdout, 0);
+    setbuf(stderr, 0);
     // Initialize the display to something interesting to get started.
- 
-    command_shell();
-    init_wavetable();
-    setup_dac();
-    init_tim6();
+    //init_wavetable();
+    //setup_dac();
+    //init_tim6();
+    //command_shell();
+    printf("test");
+    for(;;) {
+        char c = getchar();
+        putchar(c);
+    }
     return 1;
 
 
