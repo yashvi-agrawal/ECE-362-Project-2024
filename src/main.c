@@ -469,26 +469,26 @@ void drawDOWN(int lr, int bw)
 void drawLEFT(int lr, int bw)
 {
     if (lr == 0) {
-        LCD_DrawLine(155, 220 - inc, 205, 220 - inc, (bw == 0) ? BLACK : WHITE);
-        LCD_DrawLine(205, 220 - inc, 185, 190 - inc, (bw == 0) ? BLACK : WHITE); // left arrow
-        LCD_DrawLine(205, 220 - inc, 185, 250 - inc, (bw == 0) ? BLACK : WHITE);
+        LCD_DrawLine(155, 295 - inc, 205, 295 - inc, (bw == 0) ? BLACK : WHITE);
+        LCD_DrawLine(180, 320 - inc, 205, 295 - inc, (bw == 0) ? BLACK : WHITE); // left arrow
+        LCD_DrawLine(205, 295 - inc, 180, 270 - inc, (bw == 0) ? BLACK : WHITE);
     } else {
-        LCD_DrawLine(35, 220 - inc, 85, 220 - inc, (bw == 0) ? BLACK : WHITE);
-        LCD_DrawLine(85, 220 - inc, 65, 190 - inc, (bw == 0) ? BLACK : WHITE); // left arrow
-        LCD_DrawLine(85, 220 - inc, 65, 250 - inc, (bw == 0) ? BLACK : WHITE);
+        LCD_DrawLine(35, 295 - inc, 85, 295 - inc, (bw == 0) ? BLACK : WHITE);
+        LCD_DrawLine(60, 320 - inc, 85, 295 - inc, (bw == 0) ? BLACK : WHITE); // left arrow
+        LCD_DrawLine(85, 295 - inc, 60, 270 - inc, (bw == 0) ? BLACK : WHITE);
     }
 }
 
 void drawRIGHT(int lr, int bw)
 {
     if (lr == 0) {
-        LCD_DrawLine(155, 220 - inc, 205, 220 - inc, (bw == 0) ? BLACK : WHITE);
-        LCD_DrawLine(155, 220 - inc, 175, 190 - inc, (bw == 0) ? BLACK : WHITE); // right arrow
-        LCD_DrawLine(155, 220 - inc, 175, 250 - inc, (bw == 0) ? BLACK : WHITE);
+        LCD_DrawLine(155, 295 - inc, 205, 295 - inc, (bw == 0) ? BLACK : WHITE);
+        LCD_DrawLine(155, 295 - inc, 180, 320 - inc, (bw == 0) ? BLACK : WHITE); // right arrow
+        LCD_DrawLine(155, 295 - inc, 180, 270 - inc, (bw == 0) ? BLACK : WHITE);
     } else {
-        LCD_DrawLine(35,220-inc,85,220-inc, (bw == 0) ? BLACK : WHITE);
-        LCD_DrawLine(35,220-inc,55,190-inc, (bw == 0) ? BLACK : WHITE); //right arrow
-        LCD_DrawLine(35,220-inc,55,250-inc, (bw == 0) ? BLACK : WHITE);    
+        LCD_DrawLine(35, 295 - inc, 85, 295 - inc, (bw == 0) ? BLACK : WHITE);
+        LCD_DrawLine(35, 295 - inc, 60, 320 - inc, (bw == 0) ? BLACK : WHITE); // right arrow
+        LCD_DrawLine(35, 295 - inc, 60, 270 - inc, (bw == 0) ? BLACK : WHITE);
     }
 }
 
@@ -501,7 +501,7 @@ void TIM7_IRQHandler()
 
     inc++;
 
-    if (inc == 150)
+    if (inc == 270)
     {
         inc = 0;
         return;
