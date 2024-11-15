@@ -515,6 +515,7 @@ void TIM7_IRQHandler()
     {
         (*arrowFunctions[randomIndex])(randomLR, 0);
     }
+    // hi
 }
 
 void setup_tim7()
