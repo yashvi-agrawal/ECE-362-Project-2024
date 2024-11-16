@@ -1,16 +1,25 @@
 
 #include "stm32f0xx.h"
 #include <stdint.h>
-#include "commands.h"
 #include <stdio.h>
 
-#include "fifo.h"
-#include "tty.h"
-#include "lcd.h"
-
-
+int msg_index = 0;
+uint16_t msg[8] = {0x0000, 0x0100, 0x0200, 0x0300, 0x0400, 0x0500, 0x0600, 0x0700};
+extern const char font[];
+extern char keymap;
+char *keymap_arr = &keymap;
+extern uint8_t col;
+uint8_t col = 0;
+char falling_key;
+const char arrow_chars[4] = {'5', '0', '7', '9'};
+int checker = 0;
 
 void internal_clock();
+
+
+#define STEP 6
+#define SHELL
+
 void init_usart5() {
     // TODO
     RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
@@ -49,11 +58,21 @@ void init_usart5() {
 }
 
 
+
+#ifdef SHELL
+#include "commands.h"
+#include <stdio.h>
+
+#include "fifo.h"
+#include "tty.h"
+#include "lcd.h"
+
 int incL = 0;
 int randomIndex = 0; 
 int randomIndexR = 0;
 int incR = -1;
 int initial = -1;
+int gameEnd = 0;
 
 // TODO DMA data structures
 #define FIFOSIZE 16
@@ -260,6 +279,9 @@ void drawRIGHT(int inc, int lr, int bw) // lr = left (0) or right (1) side arrow
 void TIM7_IRQHandler()
 {
     TIM7 -> SR &= ~TIM_SR_UIF;
+
+    if(gameEnd == 1) return;
+
     void (*arrowFunctions[])(int, int, int) = {drawUP, drawDOWN, drawLEFT, drawRIGHT};
 
     (*arrowFunctions[randomIndex])(incL,0, 1);
@@ -267,6 +289,7 @@ void TIM7_IRQHandler()
 
     incL++;
     incR++;
+    checker = 0;
 
     if((incL - 1) == 0)
     {
@@ -276,6 +299,8 @@ void TIM7_IRQHandler()
     else if(incL == 270)
     {
         incL = 0;
+        falling_key = 'A';
+
     }
     else
     {
@@ -298,6 +323,7 @@ void TIM7_IRQHandler()
     else if(incR == 270)
         {
             incR = 0;
+            falling_key = 'A';
         }
     else
         {
@@ -305,6 +331,19 @@ void TIM7_IRQHandler()
         }
     }
     // hi
+
+    if(incR <= 280 && incR >= 250) 
+    {
+        falling_key = arrow_chars[randomIndexR];
+    }
+    if(incL <= 280 && incL >= 250) 
+    {
+        falling_key = arrow_chars[randomIndex];
+    }
+
+
+
+
 }
 
 void setup_tim7()
@@ -366,28 +405,286 @@ void printPress()
 
 }
 
+#endif 
+
+#ifdef STEP 6
+
+// int __io_putchar(int c)
+// {
+//     // TODO
+//     if (c == '\n')
+//     {
+//         while (!(USART5->ISR & USART_ISR_TXE))
+//             ;
+//         USART5->TDR = '\r';
+//     }
+//     while (!(USART5->ISR & USART_ISR_TXE))
+//         ;
+//     USART5->TDR = c;
+//     return c;
+// }
+
+// int __io_getchar(void)
+// {
+//     while (!(USART5->ISR & USART_ISR_RXNE))
+//         ;
+//     char c = USART5->RDR;
+//     // TODO
+//     if (c == '\r')
+//     {
+//         c = '\n';
+//     }
+//     __io_putchar(c);
+//     return c;
+// }
+
+void init_spi2(void)
+{
+    RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
+    GPIOB->MODER &= ~(GPIO_MODER_MODER15_0 | GPIO_MODER_MODER12_0 | GPIO_MODER_MODER13_0);
+    GPIOB->MODER |= GPIO_MODER_MODER15_1 | GPIO_MODER_MODER12_1 | GPIO_MODER_MODER13_1;
+    GPIOB->AFR[1] &= ~0xf0ff0000;
+    RCC->APB1ENR |= RCC_APB1ENR_SPI2EN;
+    SPI2->CR1 &= ~SPI_CR1_SPE;
+    SPI2->CR1 |= SPI_CR1_BR;
+    SPI2->CR2 = SPI_CR2_DS_3 | SPI_CR2_DS_2 | SPI_CR2_DS_1 | SPI_CR2_DS_0;
+    SPI2->CR1 |= SPI_CR1_MSTR;
+    SPI2->CR2 |= SPI_CR2_SSOE;
+    SPI2->CR2 |= SPI_CR2_NSSP;
+    SPI2->CR2 |= SPI_CR2_TXDMAEN;
+    SPI2->CR1 |= SPI_CR1_SPE;
+}
+
+void spi2_setup_dma(void)
+{
+    RCC->AHBENR |= RCC_AHBENR_DMA1EN;
+    DMA1_Channel5->CMAR = (uint32_t)(&msg);
+    DMA1_Channel5->CPAR = (uint32_t)(&(SPI2->DR));
+    DMA1_Channel5->CNDTR = 8;
+    DMA1_Channel5->CCR |= DMA_CCR_DIR;
+    DMA1_Channel5->CCR |= DMA_CCR_MINC;
+    DMA1_Channel5->CCR &= ~DMA_CCR_MSIZE_1;
+    DMA1_Channel5->CCR |= DMA_CCR_MSIZE_0;
+    DMA1_Channel5->CCR &= ~DMA_CCR_PSIZE_1;
+    DMA1_Channel5->CCR |= DMA_CCR_PSIZE_0;
+    DMA1_Channel5->CCR |= DMA_CCR_CIRC;
+}
+
+void spi2_enable_dma(void)
+{
+    DMA1_Channel5->CCR |= DMA_CCR_EN;
+}
+
+void enable_ports()
+{
+    RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
+    GPIOC->MODER &= ~(GPIO_MODER_MODER4 | GPIO_MODER_MODER5 | GPIO_MODER_MODER6 | GPIO_MODER_MODER7);
+    GPIOC->MODER |= (GPIO_MODER_MODER4_0 | GPIO_MODER_MODER5_0 | GPIO_MODER_MODER6_0 | GPIO_MODER_MODER7_0);
+
+    // inputs for port C
+    GPIOC->MODER &= ~(GPIO_MODER_MODER0 | GPIO_MODER_MODER1 | GPIO_MODER_MODER2 | GPIO_MODER_MODER3);
+
+    // pull down for port C
+    GPIOC->PUPDR |= GPIO_PUPDR_PUPDR0_1;
+    GPIOC->PUPDR &= ~GPIO_PUPDR_PUPDR0_0;
+    GPIOC->PUPDR |= GPIO_PUPDR_PUPDR1_1;
+    GPIOC->PUPDR &= ~GPIO_PUPDR_PUPDR1_0;
+    GPIOC->PUPDR |= GPIO_PUPDR_PUPDR2_1;
+    GPIOC->PUPDR &= ~GPIO_PUPDR_PUPDR2_0;
+    GPIOC->PUPDR |= GPIO_PUPDR_PUPDR3_1;
+    GPIOC->PUPDR &= ~GPIO_PUPDR_PUPDR3_0;
+}
+
+int c = 0;
+void drive_column(int c)
+{
+    GPIOC->BSRR = (1 << (7 + 16) | 1 << (6 + 16) | 1 << (5 + 16) | 1 << (4 + 16));
+    GPIOC->BSRR = 1 << ((0b11 & c) + 4);
+}
+
+int read_rows()
+{
+    return GPIOC->IDR &= (1 << 0 | 1 << 1 | 1 << 2 | 1 << 3);
+}
+
+char rows_to_key(int rows, int col)
+{
+    if (rows & 1)
+    {
+        rows = 0;
+    }
+    else if (rows & 2)
+    {
+        rows = 1;
+    }
+    else if (rows & 4)
+    {
+        rows = 2;
+    }
+    else if (rows & 8)
+    {
+        rows = 3;
+    }
+    int col_val = col * 4 + rows;
+    return keymap_arr[col_val];
+}
+
+char handle_input()
+{
+    for (int col = 0; col < 4; col++)
+    {
+        drive_column(col);
+        int rows = read_rows();
+        if (rows)
+        {
+            char pressed_key = rows_to_key(rows, col);
+            return pressed_key;
+        }
+    }
+    return '\0';
+}
+
+int score = 0;
+void update_score(char falling_key)
+{
+    char user_input = handle_input();
+    static int key_pressed = 0;
+    char one = '1';
 
 
+    if (user_input != 0 && key_pressed == 0)
+    {
+        key_pressed = 1;
+        // Check if the user input matches the falling key
+        if (user_input == one)
+        {
+            gameEnd = 0;
+            LCD_Clear(WHITE);
+            initialLCD();
+            setup_tim7();
+        }
+        else if(user_input == '2')
+        {
+            gameEnd = 1;
+            LCD_Clear(WHITE);
+            heart();
+        }
+        else{
+        if (user_input == falling_key)
+        {
+            score++; // Correct key press, increment score
+        }
+        else
+        {
+            score--; // Incorrect key press, decrement score
+        }
+
+        if (score < 0)
+        {
+            score = 0;
+        }
+
+        if (score > 999)
+        {
+            score = 999;
+        }
+        }
 
 
-int main() {
+        //Calculate the digits for score
+        char updated_char_5 = font['0' + (score / 100) % 10];
+        char updated_char_6 = font['0' + (score / 10) % 10];
+        char updated_char_7 = font['0' + score % 10];
+
+        msg[5] &= ~0xFF;
+        msg[6] &= ~0xFF;
+        msg[7] &= ~0xFF;
+        msg[5] |= updated_char_5;
+        msg[6] |= updated_char_6;
+        msg[7] |= updated_char_7;
+    }
+
+    // else if(checker == 1 && user_input == '\0')
+    // {
+    //     checker = 0;
+    //     score--;
+
+    //     if(score < 0) score = 0;
+
+    //     char updated_char_5 = font['0' + (score / 100) % 10];
+    //     char updated_char_6 = font['0' + (score / 10) % 10];
+    //     char updated_char_7 = font['0' + score % 10];
+
+    //     msg[5] &= ~0xFF;
+    //     msg[6] &= ~0xFF;
+    //     msg[7] &= ~0xFF;
+    //     msg[5] |= updated_char_5;
+    //     msg[6] |= updated_char_6;
+    //     msg[7] |= updated_char_7;
+    // }
+
+    if (user_input == 0) 
+    {
+        key_pressed = 0;
+    }
+}
+
+void TIM14_IRQHandler()
+{
+    TIM14->SR &= ~TIM_SR_UIF;
+    update_score(falling_key);
+}
+
+void setup_tim14()
+{
+    RCC->APB1ENR |= RCC_APB1ENR_TIM14EN;
+    // set prescaler and arr
+    TIM14->PSC = 1000000 - 1;
+    TIM14->ARR = 24 - 1;
+    TIM14->DIER |= TIM_DIER_UIE;
+    NVIC->ISER[0] = 1 << TIM14_IRQn;
+    TIM14->CR1 |= TIM_CR1_CEN;
+}
+
+#endif
+
+int main()
+{
     internal_clock();
-    init_usart5();
+    msg[0] |= font['S'];
+    msg[1] |= font['C'];
+    msg[2] |= font['O'];
+    msg[3] |= font['R'];
+    msg[4] |= font['E'];
+    msg[5] |= font['0'];
+    msg[6] |= font['0'];
+    msg[7] |= font['0'];
+
+    /*init_usart5();
     enable_tty_interrupt();
     setbuf(stdin,0);
     setbuf(stdout,0);
     setbuf(stderr,0);
     // command_shell();
     LCD_Setup();
+    srand(time(0));
+
+    initialLCD();
+    setup_tim7();
+
+    // workerLCD();*/
+
+
+
+    LCD_Setup();
     heart();
     printPress();
-    // srand(time(0));
 
-    // initialLCD();
-    // setup_tim7();
+    init_spi2();
+    spi2_setup_dma();
+    spi2_enable_dma();
+    enable_ports();
+    setup_tim14();
 
-
+    return 0;
 }
-
-
-
