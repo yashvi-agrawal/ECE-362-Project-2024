@@ -961,3 +961,4 @@ void LCD_DrawPicture(u16 x0, u16 y0, const Picture *pic)
     LCD_WriteData16_End();
     lcddev.select(0);
 }
+
