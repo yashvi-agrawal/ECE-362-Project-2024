@@ -1,11 +1,16 @@
 
 #include "stm32f0xx.h"
 #include <stdint.h>
+#include "commands.h"
+#include <stdio.h>
+
+#include "fifo.h"
+#include "tty.h"
+#include "lcd.h"
+
+
 
 void internal_clock();
-
-#define SHELL
-
 void init_usart5() {
     // TODO
     RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
@@ -43,14 +48,6 @@ void init_usart5() {
 
 }
 
-
-#ifdef SHELL
-#include "commands.h"
-#include <stdio.h>
-
-#include "fifo.h"
-#include "tty.h"
-#include "lcd.h"
 
 int incL = 0;
 int randomIndex = 0; 
@@ -203,32 +200,6 @@ void initialLCD()
 {
     LCD_DrawFillRectangle(0,0,320,320,WHITE);
     LCD_DrawLine(120,0,120,320,BLACK);
-    
-
-
-    // srand(time(NULL));
-    // void (*arrowFunctions[])() = {drawUP, drawDOWN, drawLEFT, drawRIGHT};
-
-
-    // for(int i = 0; i < 320; i++) //up arrow
-    // {
-    //     if(170-i <= 0) break;
-        
-    //     LCD_DrawLine(180, 170-i, 180, 220-i, BLACK);
-    //     LCD_DrawLine(180, 220-i, 150, 200-i, BLACK);
-    //     LCD_DrawLine(180, 220-i, 210, 200-i, BLACK); 
-
-    //     LCD_DrawLine(180, 220-i, 150, 200-i, WHITE);
-    //     LCD_DrawLine(180, 220-i, 210, 200-i, WHITE);  
-    //     LCD_DrawLine(180, 170-i, 180, 220-i, WHITE);
-
-    //     // LCD_DrawFillRectangle(0,0,320,320,WHITE);
-    //     // LCD_DrawLine(120,0,120,320,BLACK);
-        
-    // }
-
-
-
 
 }
 
@@ -247,7 +218,7 @@ void drawUP(int inc, int lr, int bw) // lr = left (0) or right (1) side arrow, i
     }
 }
 
-void drawDOWN(int inc, int lr, int bw)
+void drawDOWN(int inc, int lr, int bw) // lr = left (0) or right (1) side arrow, inc = increment down by inc, bw = black or white
 {
     if (lr == 0) {
         LCD_DrawLine(180, 320 - inc, 180, 270 - inc, (bw == 0) ? BLACK : WHITE); // line
@@ -260,7 +231,7 @@ void drawDOWN(int inc, int lr, int bw)
     }
 }
 
-void drawLEFT(int inc, int lr, int bw)
+void drawLEFT(int inc, int lr, int bw) // lr = left (0) or right (1) side arrow, inc = increment down by inc, bw = black or white
 {
     if (lr == 0) {
         LCD_DrawLine(155, 295 - inc, 205, 295 - inc, (bw == 0) ? BLACK : WHITE);
@@ -273,7 +244,7 @@ void drawLEFT(int inc, int lr, int bw)
     }
 }
 
-void drawRIGHT(int inc, int lr, int bw)
+void drawRIGHT(int inc, int lr, int bw) // lr = left (0) or right (1) side arrow, inc = increment down by inc, bw = black or white
 {
     if (lr == 0) {
         LCD_DrawLine(155, 295 - inc, 205, 295 - inc, (bw == 0) ? BLACK : WHITE);
@@ -296,40 +267,6 @@ void TIM7_IRQHandler()
 
     incL++;
     incR++;
-
-    // if (inc == 270)
-    // {
-    //     inc = 0;
-
-    // }
-    // else if ((inc-1) == 0) {
-    //     randomIndex = rand() % 4;
-    //     (*arrowFunctions[randomIndex])(0, 0);
-    // }
-    // else
-    // {
-    //     (*arrowFunctions[randomIndex])(0, 0);
-    // }
-
-    // if(inc == 100 && initial == 0)
-    // {
-    //     initial = 1;
-    //     incR = 1;
-    // }
-
-    // if((incR - 1)== 0)
-    // {
-    //     randomIndexR = rand() % 4;
-    //     (*arrowFunctions[randomIndexR])(1, 0);
-    // }
-    // else if(incR == 270)
-    // {
-    //     incR = 0;
-    // }
-    // else{
-    //     (*arrowFunctions[randomIndexR])(1, 0);
-    // }
-
 
     if((incL - 1) == 0)
     {
@@ -380,7 +317,57 @@ void setup_tim7()
     TIM7 -> CR1 |= TIM_CR1_CEN;
 }
 
-#endif
+void heart()
+{
+    LCD_Clear(WHITE);
+        // Triangle 1: Left upper lobe
+    LCD_DrawFillTriangle(100, 180, 80, 150, 120, 150, RED);
+
+    // Triangle 2: Right upper lobe
+    LCD_DrawFillTriangle(140, 180, 120, 150, 160, 150, RED);
+
+    // Triangle 3: Bottom point
+    LCD_DrawFillTriangle(80, 150, 160, 150, 120, 100, RED);
+
+}
+
+void printPress()
+{
+    
+    LCD_DrawLine(160,90,160,70,BLACK);
+    LCD_DrawRectangle(160,90,150,80,BLACK);  //p
+
+    LCD_DrawLine(145,90,145,70,BLACK);
+    LCD_DrawRectangle(145,90,135,80,BLACK); //r
+    LCD_DrawLine(145,80,135,70,BLACK);
+
+    LCD_DrawLine(130,90,130,70,BLACK);
+    LCD_DrawLine(130,90,120,90,BLACK); //e
+    LCD_DrawLine(130,80,120,80,BLACK);
+    LCD_DrawLine(130,70,120,70,BLACK);
+
+    LCD_DrawLine(115,90,115,80,BLACK);
+    LCD_DrawLine(115,90,105,90,BLACK); //s
+    LCD_DrawLine(115,80,105,80,BLACK);
+    LCD_DrawLine(115,70,105,70,BLACK);
+    LCD_DrawLine(105,80,105,70,BLACK);
+
+    LCD_DrawLine(115-15,90,115-15,80,BLACK);
+    LCD_DrawLine(115-15,90,105-15,90,BLACK); //s
+    LCD_DrawLine(115-15,80,105-15,80,BLACK);
+    LCD_DrawLine(115-15,70,105-15,70,BLACK);
+    LCD_DrawLine(105-15,80,105-15,70,BLACK);
+
+    LCD_DrawLine(120,65,120,45, BLACK);
+    LCD_DrawLine(120,65,125,55, BLACK); //1
+    LCD_DrawLine(125,45,115,45, BLACK);
+
+
+
+}
+
+
+
 
 
 int main() {
@@ -392,14 +379,15 @@ int main() {
     setbuf(stderr,0);
     // command_shell();
     LCD_Setup();
-    srand(time(0));
+    heart();
+    printPress();
+    // srand(time(0));
 
-    initialLCD();
-    setup_tim7();
+    // initialLCD();
+    // setup_tim7();
 
-
-    
-    // workerLCD();
 
 }
+
+
 
