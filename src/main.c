@@ -27,7 +27,7 @@ char *keymap_arr = &keymap;
 extern uint8_t col;
 uint8_t col = 0;
 char falling_key = '7';
-const char arrow_chars[4] = {'7', '5', '9', '0'};
+const char arrow_chars[4] = {'5', '0', '7', '9'};
 
 void internal_clock();
 
@@ -679,47 +679,55 @@ char handle_input()
 }
 
 int score = 0;
-char prev_key_state = '\0';
 void update_score(char falling_key)
 {
     char user_input = handle_input();
-    // char user_input = '6';
-    if (user_input == falling_key)
-    {
-        score++;
-    }
-    else
-    {
-        score--;
-    }
+    static int key_pressed = 0;
 
-    if (score < 0)
+    if (user_input != 0 && key_pressed == 0)
     {
-        score = 0;
-    }
+        key_pressed = 1;
+        // Check if the user input matches the falling key
+        if (user_input == falling_key)
+        {
+            score++; // Correct key press, increment score
+        }
+        else
+        {
+            score--; // Incorrect key press, decrement score
+        }
 
-    if (score > 999)
+        if (score < 0)
+        {
+            score = 0;
+        }
+
+        if (score > 999)
+        {
+            score = 999;
+        }
+
+        // Calculate the digits for score
+        char updated_char_5 = font['0' + (score / 100) % 10];
+        char updated_char_6 = font['0' + (score / 10) % 10];
+        char updated_char_7 = font['0' + score % 10];
+
+        msg[5] &= ~0xFF;
+        msg[6] &= ~0xFF;
+        msg[7] &= ~0xFF;
+        msg[5] |= updated_char_5;
+        msg[6] |= updated_char_6;
+        msg[7] |= updated_char_7;
+    }
+    if (user_input == 0) 
     {
-        score = 999;
+        key_pressed = 0;
     }
-
-    // Calculate the digits for score
-    char updated_char_5 = font['0' + (score / 100) % 10];
-    char updated_char_6 = font['0' + (score / 10) % 10];
-    char updated_char_7 = font['0' + score % 10];
-
-    msg[5] &= ~0xFF;
-    msg[6] &= ~0xFF;
-    msg[7] &= ~0xFF;
-    msg[5] |= updated_char_5;
-    msg[6] |= updated_char_6;
-    msg[7] |= updated_char_7;
 }
 
 void TIM14_IRQHandler()
 {
     TIM14->SR &= ~TIM_SR_UIF;
-    char falling_key = '7';
     update_score(falling_key);
 }
 
