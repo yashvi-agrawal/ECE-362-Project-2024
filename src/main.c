@@ -1,23 +1,23 @@
 /**
-  ******************************************************************************
-  * @file    main.c
-  * @author  Weili An, Niraj Menon
-  * @date    Feb 7, 2024
-  * @brief   ECE 362 Lab 7 student template
-  ******************************************************************************
-*/
+ ******************************************************************************
+ * @file    main.c
+ * @author  Weili An, Niraj Menon
+ * @date    Feb 7, 2024
+ * @brief   ECE 362 Lab 7 student template
+ ******************************************************************************
+ */
 
 /*******************************************************************************/
 
-// Fill out your username!  Even though we're not using an autotest, 
+// Fill out your username!  Even though we're not using an autotest,
 // it should be a habit to fill out your username in this field now.
-const char* username = "agraw192";
+const char *username = "agraw192";
 
-/*******************************************************************************/ 
+/*******************************************************************************/
 
 #include "stm32f0xx.h"
 #include <stdint.h>
-
+#include <stdio.h>
 
 int msg_index = 0;
 uint16_t msg[8] = {0x0000, 0x0100, 0x0200, 0x0300, 0x0400, 0x0500, 0x0600, 0x0700};
@@ -25,7 +25,8 @@ extern const char font[];
 extern char keymap;
 char *keymap_arr = &keymap;
 extern uint8_t col;
-char falling_key = '7'; 
+uint8_t col = 0;
+char falling_key = '7';
 const char arrow_chars[4] = {'7', '5', '9', '0'};
 
 void internal_clock();
@@ -35,10 +36,10 @@ void internal_clock();
 // #define STEP2
 // #define STEP3
 // #define STEP4
-#define STEP 6 
+#define STEP 6
 #define SHELL
 
-void init_usart5() {
+/*void init_usart5() {
     // TODO
     RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
     RCC->AHBENR |= RCC_AHBENR_GPIODEN;
@@ -185,7 +186,7 @@ void enable_tty_interrupt(void) {
     USART5->CR1 |= USART_CR1_RXNEIE;
 
     NVIC_EnableIRQ(USART3_8_IRQn);
-    USART5->CR3 |= USART_CR3_DMAR; 
+    USART5->CR3 |= USART_CR3_DMAR;
 
     RCC->AHBENR |= RCC_AHBENR_DMA2EN;
     DMA2->CSELR |= DMA2_CSELR_CH2_USART5_RX;
@@ -271,7 +272,7 @@ int main() {
 #include "lcd.h"
 
 int inc = 0;
-int randomIndex = 0; 
+int randomIndex = 0;
 int randomLR;
 
 // TODO DMA data structures
@@ -292,7 +293,7 @@ void enable_tty_interrupt(void) {
     USART5->CR1 |= USART_CR1_RXNEIE;
 
     NVIC_EnableIRQ(USART3_8_IRQn);
-    USART5->CR3 |= USART_CR3_DMAR; 
+    USART5->CR3 |= USART_CR3_DMAR;
 
     RCC->AHBENR |= RCC_AHBENR_DMA2EN;
     DMA2->CSELR |= DMA2_CSELR_CH2_USART5_RX;
@@ -419,7 +420,7 @@ void initialLCD()
 {
     LCD_DrawFillRectangle(0,0,320,320,WHITE);
     LCD_DrawLine(120,0,120,320,BLACK);
-    
+
 
 
     // srand(time(NULL));
@@ -429,18 +430,18 @@ void initialLCD()
     // for(int i = 0; i < 320; i++) //up arrow
     // {
     //     if(170-i <= 0) break;
-        
+
     //     LCD_DrawLine(180, 170-i, 180, 220-i, BLACK);
     //     LCD_DrawLine(180, 220-i, 150, 200-i, BLACK);
-    //     LCD_DrawLine(180, 220-i, 210, 200-i, BLACK); 
+    //     LCD_DrawLine(180, 220-i, 210, 200-i, BLACK);
 
     //     LCD_DrawLine(180, 220-i, 150, 200-i, WHITE);
-    //     LCD_DrawLine(180, 220-i, 210, 200-i, WHITE);  
+    //     LCD_DrawLine(180, 220-i, 210, 200-i, WHITE);
     //     LCD_DrawLine(180, 170-i, 180, 220-i, WHITE);
 
     //     // LCD_DrawFillRectangle(0,0,320,320,WHITE);
     //     // LCD_DrawLine(120,0,120,320,BLACK);
-        
+
     // }
 
 
@@ -498,7 +499,7 @@ void drawRIGHT(int lr, int bw)
     } else {
         LCD_DrawLine(35,220-inc,85,220-inc, (bw == 0) ? BLACK : WHITE);
         LCD_DrawLine(35,220-inc,55,190-inc, (bw == 0) ? BLACK : WHITE); //right arrow
-        LCD_DrawLine(35,220-inc,55,250-inc, (bw == 0) ? BLACK : WHITE);    
+        LCD_DrawLine(35,220-inc,55,250-inc, (bw == 0) ? BLACK : WHITE);
     }
 }
 
@@ -519,7 +520,7 @@ void TIM7_IRQHandler()
     if ((inc-1) == 0) {
         randomIndex = rand() % 4;
         randomLR = rand() % 2;
-        falling_key = arrow_chars[randomIndex]; 
+        falling_key = arrow_chars[randomIndex];
         (*arrowFunctions[randomIndex])(randomLR, 0);
     }
     else
@@ -538,9 +539,38 @@ void setup_tim7()
     TIM7 -> CR1 |= TIM_CR1_CEN;
 }
 
-#endif
+#endif */
 
-#ifdef STEP 6
+// #ifdef STEP 6
+
+int __io_putchar(int c)
+{
+    // TODO
+    if (c == '\n')
+    {
+        while (!(USART5->ISR & USART_ISR_TXE))
+            ;
+        USART5->TDR = '\r';
+    }
+    while (!(USART5->ISR & USART_ISR_TXE))
+        ;
+    USART5->TDR = c;
+    return c;
+}
+
+int __io_getchar(void)
+{
+    while (!(USART5->ISR & USART_ISR_RXNE))
+        ;
+    char c = USART5->RDR;
+    // TODO
+    if (c == '\r')
+    {
+        c = '\n';
+    }
+    __io_putchar(c);
+    return c;
+}
 
 void init_spi2(void)
 {
@@ -550,19 +580,19 @@ void init_spi2(void)
     GPIOB->AFR[1] &= ~0xf0ff0000;
     RCC->APB1ENR |= RCC_APB1ENR_SPI2EN;
     SPI2->CR1 &= ~SPI_CR1_SPE;
-    SPI2->CR1 |= SPI_CR1_BR; 
+    SPI2->CR1 |= SPI_CR1_BR;
     SPI2->CR2 = SPI_CR2_DS_3 | SPI_CR2_DS_2 | SPI_CR2_DS_1 | SPI_CR2_DS_0;
-    SPI2->CR1 |= SPI_CR1_MSTR; 
-    SPI2->CR2 |= SPI_CR2_SSOE; 
-    SPI2->CR2 |= SPI_CR2_NSSP;  
-    SPI2->CR2 |= SPI_CR2_TXDMAEN; 
-    SPI2->CR1 |= SPI_CR1_SPE; 
+    SPI2->CR1 |= SPI_CR1_MSTR;
+    SPI2->CR2 |= SPI_CR2_SSOE;
+    SPI2->CR2 |= SPI_CR2_NSSP;
+    SPI2->CR2 |= SPI_CR2_TXDMAEN;
+    SPI2->CR1 |= SPI_CR1_SPE;
 }
 
 void spi2_setup_dma(void)
 {
     RCC->AHBENR |= RCC_AHBENR_DMA1EN;
-    DMA1_Channel5->CMAR = (uint32_t)(&msg); 
+    DMA1_Channel5->CMAR = (uint32_t)(&msg);
     DMA1_Channel5->CPAR = (uint32_t)(&(SPI2->DR));
     DMA1_Channel5->CNDTR = 8;
     DMA1_Channel5->CCR |= DMA_CCR_DIR;
@@ -581,122 +611,133 @@ void spi2_enable_dma(void)
 
 void enable_ports()
 {
-  GPIOC->MODER &= ~(GPIO_MODER_MODER4 | GPIO_MODER_MODER5 | GPIO_MODER_MODER6 | GPIO_MODER_MODER7); 
-  GPIOC->MODER |= (GPIO_MODER_MODER4_0 | GPIO_MODER_MODER5_0 | GPIO_MODER_MODER6_0 | GPIO_MODER_MODER7_0);
+    RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
+    GPIOC->MODER &= ~(GPIO_MODER_MODER4 | GPIO_MODER_MODER5 | GPIO_MODER_MODER6 | GPIO_MODER_MODER7);
+    GPIOC->MODER |= (GPIO_MODER_MODER4_0 | GPIO_MODER_MODER5_0 | GPIO_MODER_MODER6_0 | GPIO_MODER_MODER7_0);
 
-  //inputs for port C
-  GPIOC->MODER &= ~(GPIO_MODER_MODER0 | GPIO_MODER_MODER1 | GPIO_MODER_MODER2 | GPIO_MODER_MODER3); 
+    // inputs for port C
+    GPIOC->MODER &= ~(GPIO_MODER_MODER0 | GPIO_MODER_MODER1 | GPIO_MODER_MODER2 | GPIO_MODER_MODER3);
 
-  // pull down for port C
-  GPIOC->PUPDR |= GPIO_PUPDR_PUPDR0_1; 
-  GPIOC->PUPDR &= ~GPIO_PUPDR_PUPDR0_0; 
-  GPIOC->PUPDR |= GPIO_PUPDR_PUPDR1_1;
-  GPIOC->PUPDR &= ~GPIO_PUPDR_PUPDR1_0;
-  GPIOC->PUPDR |= GPIO_PUPDR_PUPDR2_1;
-  GPIOC->PUPDR &= ~GPIO_PUPDR_PUPDR2_0;
-  GPIOC->PUPDR |= GPIO_PUPDR_PUPDR3_1;
-  GPIOC->PUPDR &= ~GPIO_PUPDR_PUPDR3_0;
+    // pull down for port C
+    GPIOC->PUPDR |= GPIO_PUPDR_PUPDR0_1;
+    GPIOC->PUPDR &= ~GPIO_PUPDR_PUPDR0_0;
+    GPIOC->PUPDR |= GPIO_PUPDR_PUPDR1_1;
+    GPIOC->PUPDR &= ~GPIO_PUPDR_PUPDR1_0;
+    GPIOC->PUPDR |= GPIO_PUPDR_PUPDR2_1;
+    GPIOC->PUPDR &= ~GPIO_PUPDR_PUPDR2_0;
+    GPIOC->PUPDR |= GPIO_PUPDR_PUPDR3_1;
+    GPIOC->PUPDR &= ~GPIO_PUPDR_PUPDR3_0;
 }
 
-int c = 0; 
+int c = 0;
 void drive_column(int c)
 {
-    GPIOC->BSRR = (1 << (7 + 16) | 1 << (6 + 16) | 1 << (5 + 16) | 1 << (4 + 16)); 
-    GPIOC->BSRR = 1 << ((0b11 & c) + 4);  
+    GPIOC->BSRR = (1 << (7 + 16) | 1 << (6 + 16) | 1 << (5 + 16) | 1 << (4 + 16));
+    GPIOC->BSRR = 1 << ((0b11 & c) + 4);
 }
 
 int read_rows()
 {
-    return GPIOC->IDR &= (1 << 0 | 1 << 1 | 1 << 2 | 1 << 3);  
+    return GPIOC->IDR &= (1 << 0 | 1 << 1 | 1 << 2 | 1 << 3);
 }
 
-char rows_to_key(int rows)
+char rows_to_key(int rows, int col)
 {
-  if (rows & 1)
-  {
-    rows = 0; 
-  }
-  else if (rows & 2)
-  {
-    rows = 1; 
-  }
-  else if (rows & 4)
-  {
-    rows = 2; 
-  }
-  else if (rows & 8)
-  {
-    rows = 3; 
-  }
-  int col_val = col*4 + rows; 
-  return keymap_arr[col_val]; 
-
+    if (rows & 1)
+    {
+        rows = 0;
+    }
+    else if (rows & 2)
+    {
+        rows = 1;
+    }
+    else if (rows & 4)
+    {
+        rows = 2;
+    }
+    else if (rows & 8)
+    {
+        rows = 3;
+    }
+    int col_val = col * 4 + rows;
+    return keymap_arr[col_val];
 }
 
-char handle_input() {
-    for (int col = 0; col < 4; col++) {
-        drive_column(col); 
-        int rows = read_rows(); 
-        if (rows) 
+char handle_input()
+{
+    for (int col = 0; col < 4; col++)
+    {
+        drive_column(col);
+        int rows = read_rows();
+        if (rows)
         {
-            return rows_to_key(rows);
+            char pressed_key = rows_to_key(rows, col);
+            return pressed_key;
         }
     }
-    return '\0'; 
+    return '\0';
 }
 
-int score = 0; 
-void update_score(falling_key) {
-    char user_input = handle_input();  
-
-    // Check if the pressed key matches the falling key
-    if (user_input == falling_key) 
+int score = 0;
+char prev_key_state = '\0';
+void update_score(char falling_key)
+{
+    char user_input = handle_input();
+    // char user_input = '6';
+    if (user_input == falling_key)
     {
-        score++;  
-    } 
-    else 
+        score++;
+    }
+    else
     {
-        score--;  
+        score--;
     }
 
     if (score < 0)
     {
         score = 0;
     }
-   
-    if (score > 999) 
+
+    if (score > 999)
     {
         score = 999;
     }
 
-    msg[5] |= font['0' + (score / 100) % 10]; 
-    msg[6] |= font['0' + (score / 10) % 10];  
-    msg[7] |= font['0' + score % 10];          
+    // Calculate the digits for score
+    char updated_char_5 = font['0' + (score / 100) % 10];
+    char updated_char_6 = font['0' + (score / 10) % 10];
+    char updated_char_7 = font['0' + score % 10];
+
+    msg[5] &= ~0xFF;
+    msg[6] &= ~0xFF;
+    msg[7] &= ~0xFF;
+    msg[5] |= updated_char_5;
+    msg[6] |= updated_char_6;
+    msg[7] |= updated_char_7;
 }
 
 void TIM14_IRQHandler()
 {
-  TIM14->SR &= ~TIM_SR_UIF;  
-  handle_input(); 
-  update_score(falling_key); 
+    TIM14->SR &= ~TIM_SR_UIF;
+    char falling_key = '7';
+    update_score(falling_key);
 }
 
 void setup_tim14()
-{ 
-    RCC->APB1ENR |= RCC_APB1ENR_TIM14EN; 
-    //set prescaler and arr
-    TIM14 -> PSC = 1000000 - 1;
-    TIM14 -> ARR = 24 - 1;
-    TIM14->DIER |= TIM_DIER_UIE; 
-    NVIC->ISER[0] = 1 << TIM14_IRQn;  
+{
+    RCC->APB1ENR |= RCC_APB1ENR_TIM14EN;
+    // set prescaler and arr
+    TIM14->PSC = 1000000 - 1;
+    TIM14->ARR = 24 - 1;
+    TIM14->DIER |= TIM_DIER_UIE;
+    NVIC->ISER[0] = 1 << TIM14_IRQn;
     TIM14->CR1 |= TIM_CR1_CEN;
 }
 
+// #endif
 
-#endif 
-
-
-int main() {
+int main()
+{
     internal_clock();
     msg[0] |= font['S'];
     msg[1] |= font['C'];
@@ -706,7 +747,8 @@ int main() {
     msg[5] |= font['0'];
     msg[6] |= font['0'];
     msg[7] |= font['0'];
-    init_usart5();
+
+    /*init_usart5();
     enable_tty_interrupt();
     setbuf(stdin,0);
     setbuf(stdout,0);
@@ -718,8 +760,13 @@ int main() {
     initialLCD();
     setup_tim7();
 
+    // workerLCD();*/
 
-    
-    // workerLCD();
+    init_spi2();
+    spi2_setup_dma();
+    spi2_enable_dma();
+    enable_ports();
+    setup_tim14();
 
+    return 0;
 }
