@@ -629,6 +629,18 @@ void enable_ports()
     GPIOC->PUPDR &= ~GPIO_PUPDR_PUPDR3_0;
 }
 
+void enable_led_ports()
+{
+    RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
+    RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
+
+    GPIOA->MODER &= ~(GPIO_MODER_MODER0);
+    GPIOA->MODER |= GPIO_MODER_MODER0_0;
+
+    GPIOB->MODER &= ~(GPIO_MODER_MODER0);
+    GPIOB->MODER |= GPIO_MODER_MODER0_0;
+}
+
 int c = 0;
 void drive_column(int c)
 {
@@ -677,6 +689,24 @@ char handle_input()
     }
     return '\0';
 }
+//togglexn from lab 2 
+void togglexn(GPIO_TypeDef *port, int n)
+{
+    int32_t pin = 1 << n;
+    int32_t check_val = port->ODR & pin; // we use and to find matching ones in the port->IDR and the pin value
+    if (check_val != 0)
+    {
+        port->BRR = pin;
+    }
+    else
+    {
+        port->BSRR = pin;
+    }
+}
+void small_delay(void)
+{
+    nano_wait(50000);
+}
 
 int score = 0;
 void update_score(char falling_key)
@@ -690,11 +720,17 @@ void update_score(char falling_key)
         // Check if the user input matches the falling key
         if (user_input == falling_key)
         {
-            score++; // Correct key press, increment score
+            score++;            // Correct key press, increment score
+            togglexn(GPIOA, 0); // Turn on the green LED
+            small_delay(); 
+            togglexn(GPIOA, 0); // Turn off the green LED
         }
         else
         {
-            score--; // Incorrect key press, decrement score
+            score--;            // Incorrect key press, decrement score
+            togglexn(GPIOB, 0); // Turn on the red LED
+            small_delay();   
+            togglexn(GPIOB, 0); // Turn off the red LED
         }
 
         if (score < 0)
@@ -719,7 +755,7 @@ void update_score(char falling_key)
         msg[6] |= updated_char_6;
         msg[7] |= updated_char_7;
     }
-    if (user_input == 0) 
+    if (user_input == 0)
     {
         key_pressed = 0;
     }
