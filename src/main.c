@@ -496,6 +496,36 @@ void enable_ports()
     GPIOC->PUPDR &= ~GPIO_PUPDR_PUPDR3_0;
 }
 
+void enable_led_ports()
+{
+    RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
+    RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
+
+    GPIOA->MODER &= ~(0x30000); //red, PA8
+    GPIOA->MODER |= 0x30000;
+
+    GPIOA->MODER &= ~(0xC0000); //green, PA9
+    GPIOA->MODER |= 0xC0000;
+}
+
+void turnOffLed(GPIO_TypeDef *port, int n) {
+    int32_t pin = 1 << n;
+    int32_t check_val = port->ODR & pin; // we use and to find matching ones in the port->IDR and the pin value
+    if (check_val != 0)
+    {
+        port->BRR = pin;
+    }
+}
+
+void turnOnLed(GPIO_TypeDef *port, int n) {
+    int32_t pin = 1 << n;
+    int32_t check_val = port->ODR & pin; // we use and to find matching ones in the port->IDR and the pin value
+    if (check_val = 0)
+    {
+        port->BSRR = pin;
+    }
+}
+
 int c = 0;
 void drive_column(int c)
 {
@@ -573,11 +603,15 @@ void update_score(char falling_key)
         else{
         if (user_input == falling_key)
         {
+            // turnOffLed(GPIOA, 8); // red off
             score++; // Correct key press, increment score
+            // turnOnLed(GPIOA, 9); // green on
         }
         else
         {
+            // turnOffLed(GPIOA, 9); // green off
             score--; // Incorrect key press, decrement score
+            // turnOnLed(GPIOA, 8); // red on
         }
 
         if (score < 0)
@@ -649,11 +683,26 @@ void setup_tim14()
     TIM14->CR1 |= TIM_CR1_CEN;
 }
 
+void togglexn(GPIO_TypeDef *port, int n)
+{
+    int32_t pin = 1 << n;
+    int32_t check_val = port->ODR & pin; // we use and to find matching ones in the port->IDR and the pin value
+    if (check_val != 0)
+    {
+        port->BRR = pin;
+    }
+    else
+    {
+        port->BSRR = pin;
+    }
+}
+
 #endif
 
 int main()
 {
     internal_clock();
+
     msg[0] |= font['S'];
     msg[1] |= font['C'];
     msg[2] |= font['O'];
@@ -691,6 +740,10 @@ int main()
     spi2_enable_dma();
     enable_ports();
     setup_tim14();
+    enable_led_ports();
+
+    togglexn(GPIOA, 9);
+
 
     return 0;
 }
