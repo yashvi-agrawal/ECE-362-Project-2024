@@ -17,7 +17,7 @@ int checker = 0;
 void internal_clock();
 
 
-#define STEP 6
+#define STEP6
 #define SHELL
 
 void init_usart5() {
@@ -296,7 +296,7 @@ void TIM7_IRQHandler()
         randomIndex = rand() % 4;
         (*arrowFunctions[randomIndex])(incL,0, 0);
     }
-    else if(incL == 270)
+    else if(incL == 271)
     {
         incL = 0;
         falling_key = 'A';
@@ -320,7 +320,7 @@ void TIM7_IRQHandler()
             randomIndexR = rand() % 4;
             (*arrowFunctions[randomIndexR])(incR, 1, 0);
         }
-    else if(incR == 270)
+    else if(incR == 271)
         {
             incR = 0;
             falling_key = 'A';
@@ -332,11 +332,11 @@ void TIM7_IRQHandler()
     }
     // hi
 
-    if(incR <= 280 && incR >= 250) 
+    if(incR <= 280 && incR >= 230) 
     {
         falling_key = arrow_chars[randomIndexR];
     }
-    if(incL <= 280 && incL >= 250) 
+    if(incL <= 280 && incL >= 230) 
     {
         falling_key = arrow_chars[randomIndex];
     }
@@ -407,7 +407,7 @@ void printPress()
 
 #endif 
 
-#ifdef STEP 6
+#ifdef STEP6
 
 // int __io_putchar(int c)
 // {
@@ -593,6 +593,8 @@ void update_score(char falling_key)
 
         //Calculate the digits for score
         char updated_char_5 = font['0' + (score / 100) % 10];
+        // char updated_char_5 = font[user_input];
+
         char updated_char_6 = font['0' + (score / 10) % 10];
         char updated_char_7 = font['0' + score % 10];
 
@@ -679,6 +681,9 @@ int main()
     LCD_Setup();
     heart();
     printPress();
+
+    srand(time(0));
+
 
     init_spi2();
     spi2_setup_dma();
