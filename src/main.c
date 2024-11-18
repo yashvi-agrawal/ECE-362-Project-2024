@@ -16,6 +16,7 @@ int checker = 0;
 
 void internal_clock();
 
+//look buddy
 
 #define STEP6
 #define SHELL
