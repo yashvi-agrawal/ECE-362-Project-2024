@@ -93,7 +93,7 @@ void enable_tty_interrupt(void) {
     USART5->CR1 |= USART_CR1_RXNEIE;
 
     NVIC_EnableIRQ(USART3_8_IRQn);
-    USART5->CR3 |= USART_CR3_DMAR; 
+    USART5->CR3 |= USART_CR3_DMAR;
 
     RCC->AHBENR |= RCC_AHBENR_DMA2EN;
     DMA2->CSELR |= DMA2_CSELR_CH2_USART5_RX;
