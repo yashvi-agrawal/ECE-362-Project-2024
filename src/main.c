@@ -1,34 +1,54 @@
 /**
  ******************************************************************************
  * @file    main.c
- * @author  Weili An, Niraj Menon
- * @date    Feb 7, 2024
- * @brief   ECE 362 Lab 7 student template
+ * @author  Esharaqa Jahid, Sitara Iyer, Hilal B Tasdemir, Yashvi Agrawal
+ * @date    Nov 8, 2024
+ * @brief   ECE 362 Course Project 68 ASHY
  ******************************************************************************
  */
 
 /*******************************************************************************/
-
-// Fill out your username!  Even though we're not using an autotest,
-// it should be a habit to fill out your username in this field now.
-const char *username = "agraw192";
-
+const char *username = "htasdem";
 /*******************************************************************************/
 
 #include "stm32f0xx.h"
+#include <math.h> // for M_PI
 #include <stdint.h>
-#include <string.h>
+#include <stdio.h>
+#include "fifo.h"
+#include "tty.h"
 #include "commands.h"
+#include "lcd.h"
+#include "ff.h"
 
 void internal_clock();
 
-// Uncomment only one of the following to test each step
-// #define STEP1
-// #define STEP2
-// #define STEP3
-// #define STEP4
-//#define MUSIC
-//#define SHELL
+// DAC
+#define N 1000
+#define RATE 20000
+#define BUFFER_SIZE 1024          // Adjust size as needed for your buffer
+#define WAV_FILE_PATH "sine8.wav" // Path to your WAV file
+
+short int wavetable[N];
+int step0 = 0;
+int offset0 = 0;
+uint8_t col; // the column being scanned
+uint32_t volume = 2048;
+uint16_t msg[8] = {0x0000, 0x0100, 0x0200, 0x0300, 0x0400, 0x0500, 0x0600, 0x0700};
+extern const char font[];
+void print(const char str[]);
+float getfloat(void); // read a floating-point number from keypad
+void printfloat(float f);
+
+unsigned char buffer[10];
+FILE *ptr;
+FATFS fs;    // FatFS file system object
+FIL file;    // File object to store information about the open file
+FRESULT res; // Result of operations
+UINT br = 0;
+
+#define ONE_TONE
+// #define MIX_TONES
 
 void init_usart5()
 {
@@ -68,335 +88,10 @@ void init_usart5()
         ;
 }
 
-#ifdef STEP1
-int main(void)
+int __io_putchar(int ch)
 {
-    internal_clock();
-    init_usart5();
-    for (;;)
-    {
-        while (!(USART5->ISR & USART_ISR_RXNE))
-        {
-        }
-        char c = USART5->RDR;
-        while (!(USART5->ISR & USART_ISR_TXE))
-        {
-        }
-        USART5->TDR = c;
-    }
-}
-#endif
-
-#ifdef STEP2
-#include <stdio.h>
-
-// TODO Resolve the echo and carriage-return problem
-
-int __io_putchar(int c)
-{
-    // TODO
-    if (c == '\n')
-    {
-        while (!(USART5->ISR & USART_ISR_TXE))
-            ;
-        USART5->TDR = '\r';
-    }
-    while (!(USART5->ISR & USART_ISR_TXE))
-        ;
-    USART5->TDR = c;
-    return c;
-}
-
-int __io_getchar(void)
-{
-    while (!(USART5->ISR & USART_ISR_RXNE))
-        ;
-    char c = USART5->RDR;
-    // TODO
-    if (c == '\r')
-    {
-        c = '\n';
-    }
-    __io_putchar(c);
-    return c;
-}
-
-int main()
-{
-    internal_clock();
-    init_usart5();
-    setbuf(stdin, 0);
-    setbuf(stdout, 0);
-    setbuf(stderr, 0);
-    printf("Enter your name: ");
-    char name[80];
-    fgets(name, 80, stdin);
-    printf("Your name is %s", name);
-    printf("Type any characters.\n");
-    for (;;)
-    {
-        char c = getchar();
-        putchar(c);
-    }
-}
-#endif
-
-#ifdef STEP3
-#include <stdio.h>
-#include "fifo.h"
-#include "tty.h"
-int __io_putchar(int c)
-{
-    // TODO Copy from your STEP2
-    if (c == '\n')
-    {
-        while (!(USART5->ISR & USART_ISR_TXE))
-            ;
-        USART5->TDR = '\r';
-    }
-    while (!(USART5->ISR & USART_ISR_TXE))
-        ;
-    USART5->TDR = c;
-    return c;
-}
-
-int __io_getchar(void)
-{
-    // TODO
-    return line_buffer_getchar();
-}
-
-int main()
-{
-    internal_clock();
-    init_usart5();
-    setbuf(stdin, 0);
-    setbuf(stdout, 0);
-    setbuf(stderr, 0);
-    printf("Enter your name: ");
-    char name[80];
-    fgets(name, 80, stdin);
-    printf("Your name is %s", name);
-    printf("Type any characters.\n");
-    for (;;)
-    {
-        char c = getchar();
-        putchar(c);
-    }
-}
-#endif
-
-#ifdef STEP4
-
-#include <stdio.h>
-#include "fifo.h"
-#include "tty.h"
-
-// TODO DMA data structures
-#define FIFOSIZE 16
-char serfifo[FIFOSIZE];
-int seroffset = 0;
-
-void enable_tty_interrupt(void)
-{
-    // TODO
-    USART5->CR1 |= USART_CR1_RXNEIE;
-
-    NVIC_EnableIRQ(USART3_8_IRQn);
-    USART5->CR3 |= USART_CR3_DMAR;
-
-    RCC->AHBENR |= RCC_AHBENR_DMA2EN;
-    DMA2->CSELR |= DMA2_CSELR_CH2_USART5_RX;
-    DMA2_Channel2->CCR &= ~DMA_CCR_EN; // First make sure DMA is turned off
-
-    // The DMA channel 2 configuration goes here
-    DMA2_Channel2->CMAR = &serfifo;
-    DMA2_Channel2->CPAR = &(USART5->RDR);
-    DMA2_Channel2->CNDTR |= FIFOSIZE;
-    DMA2_Channel2->CCR &= ~(DMA_CCR_DIR | DMA_CCR_HTIE | DMA_CCR_TCIE);
-    DMA2_Channel2->CCR &= ~(DMA_CCR_MSIZE_1 | DMA_CCR_MSIZE_0 | DMA_CCR_PSIZE_1 | DMA_CCR_PSIZE_0);
-    DMA2_Channel2->CCR |= DMA_CCR_MINC;
-    DMA2_Channel2->CCR &= ~DMA_CCR_PINC;
-    DMA2_Channel2->CCR |= DMA_CCR_CIRC;
-    DMA2_Channel2->CCR &= ~DMA_CCR_MEM2MEM;
-    DMA2_Channel2->CCR |= DMA_CCR_PL_1 | DMA_CCR_PL_0;
-    DMA2_Channel2->CCR |= DMA_CCR_EN;
-}
-
-// Works like line_buffer_getchar(), but does not check or clear ORE nor wait on new characters in USART
-char interrupt_getchar()
-{
-    // TODO
-    while (fifo_newline(&input_fifo) == 0)
-    {
-        asm volatile("wfi"); // wait for an interrupt
-    }
-    return fifo_remove(&input_fifo);
-}
-
-int __io_putchar(int c)
-{
-    // TODO copy from STEP2
-    if (c == '\n')
-    {
-        while (!(USART5->ISR & USART_ISR_TXE))
-            ;
-        USART5->TDR = '\r';
-    }
-    while (!(USART5->ISR & USART_ISR_TXE))
-        ;
-    USART5->TDR = c;
-    return c;
-}
-
-int __io_getchar(void)
-{
-    // TODO Use interrupt_getchar() instead of line_buffer_getchar()
-    return interrupt_getchar();
-}
-
-// TODO Copy the content for the USART5 ISR here
-void USART3_8_IRQHandler(void)
-{
-    while (DMA2_Channel2->CNDTR != sizeof serfifo - seroffset)
-    {
-        if (!fifo_full(&input_fifo))
-            insert_echo_char(serfifo[seroffset]);
-        seroffset = (seroffset + 1) % sizeof serfifo;
-    }
-}
-
-// TODO Remember to look up for the proper name of the ISR function
-
-int main()
-{
-    internal_clock();
-    init_usart5();
-    enable_tty_interrupt();
-
-    setbuf(stdin, 0); // These turn off buffering; more efficient, but makes it hard to explain why first 1023 characters not dispalyed
-    setbuf(stdout, 0);
-    setbuf(stderr, 0);
-    printf("Enter your name: "); // Types name but shouldn't echo the characters; USE CTRL-J to finish
-    char name[80];
-    fgets(name, 80, stdin);
-    printf("Your name is %s", name);
-    printf("Type any characters.\n"); // After, will type TWO instead of ONE
-    for (;;)
-    {
-        char c = getchar();
-        putchar(c);
-    }
-}
-#endif
-
-#ifdef SHELL
-#include "commands.h"
-#include <stdio.h>
-
-#include "fifo.h"
-#include "tty.h"
-#include "lcd.h"
-
-int inc = 0;
-int randomIndex;
-
-// TODO DMA data structures
-#define FIFOSIZE 16
-char serfifo[FIFOSIZE];
-int seroffset = 0;
-
-// DAC
-#define N 1000
-#define RATE 20000
-short int wavetable[N];
-int step0 = 0;
-int offset0 = 0;
-uint32_t volume = 2048;
-
-void USART3_8_IRQHandler(void)
-{
-    while (DMA2_Channel2->CNDTR != sizeof serfifo - seroffset)
-    {
-        if (!fifo_full(&input_fifo))
-            insert_echo_char(serfifo[seroffset]);
-        seroffset = (seroffset + 1) % sizeof serfifo;
-    }
-}
-
-void enable_tty_interrupt(void)
-{
-    // TODO
-    USART5->CR1 |= USART_CR1_RXNEIE;
-
-    NVIC_EnableIRQ(USART3_8_IRQn);
-    USART5->CR3 |= USART_CR3_DMAR;
-
-    RCC->AHBENR |= RCC_AHBENR_DMA2EN;
-    DMA2->CSELR |= DMA2_CSELR_CH2_USART5_RX;
-    DMA2_Channel2->CCR &= ~DMA_CCR_EN; // First make sure DMA is turned off
-
-    // The DMA channel 2 configuration goes here
-    DMA2_Channel2->CMAR = &serfifo;
-    DMA2_Channel2->CPAR = &(USART5->RDR);
-    DMA2_Channel2->CNDTR |= FIFOSIZE;
-    DMA2_Channel2->CCR &= ~(DMA_CCR_DIR | DMA_CCR_HTIE | DMA_CCR_TCIE);
-    DMA2_Channel2->CCR &= ~(DMA_CCR_MSIZE_1 | DMA_CCR_MSIZE_0 | DMA_CCR_PSIZE_1 | DMA_CCR_PSIZE_0);
-    DMA2_Channel2->CCR |= DMA_CCR_MINC;
-    DMA2_Channel2->CCR &= ~DMA_CCR_PINC;
-    DMA2_Channel2->CCR |= DMA_CCR_CIRC;
-    DMA2_Channel2->CCR &= ~DMA_CCR_MEM2MEM;
-    DMA2_Channel2->CCR |= DMA_CCR_PL_1 | DMA_CCR_PL_0;
-    DMA2_Channel2->CCR |= DMA_CCR_EN;
-}
-
-// Works like line_buffer_getchar(), but does not check or clear ORE nor wait on new characters in USART
-char interrupt_getchar()
-{
-    // TODO
-    while (fifo_newline(&input_fifo) == 0)
-    {
-        asm volatile("wfi"); // wait for an interrupt
-    }
-    return fifo_remove(&input_fifo);
-}
-
-int __io_putchar(int c)
-{
-    // TODO copy from STEP2
-    if (c == '\n')
-    {
-        while (!(USART5->ISR & USART_ISR_TXE))
-            ;
-        USART5->TDR = '\r';
-    }
-    while (!(USART5->ISR & USART_ISR_TXE))
-        ;
-    USART5->TDR = c;
-    return c;
-}
-
-int __io_getchar(void)
-{
-    // TODO Use interrupt_getchar() instead of line_buffer_getchar()
-    return interrupt_getchar();
-}
-
-void my_command_shell(void)
-{
-    char line[100];
-    int len = strlen(line);
-    puts("This is the STM32 command shell.");
-    for (;;)
-    {
-        printf("> ");
-        fgets(line, 99, stdin);
-        line[99] = '\0';
-        len = strlen(line);
-        if ((line[len - 1]) == '\n')
-            line[len - 1] = '\0';
-        parse_command(line);
-    }
+    // Code to send `ch` to UART or other debug interface
+    return ch;
 }
 
 void init_spi1_slow()
@@ -446,367 +141,108 @@ void sdcard_io_high_speed()
     SPI1->CR1 |= SPI_CR1_SPE;
 }
 
-void init_lcd_spi()
+void setup_dma(void)
 {
-    RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
 
-    GPIOB->MODER &= ~(0x30C30000);
-    GPIOB->MODER |= (0x10410000);
+    RCC->AHBENR |= RCC_AHBENR_DMA1EN;
+    DMA1_Channel5->CCR &= DMA_CCR_EN;
+    DMA1_Channel5->CMAR = (uint32_t)msg;
+    DMA1_Channel5->CPAR = (uint32_t)&GPIOB->ODR;
+    DMA1_Channel5->CNDTR = 8; // check if matches the data transfer
+    // DMA1_Channel5->CCR = 0;
+    DMA1_Channel5->CCR |= DMA_CCR_DIR;
+    DMA1_Channel5->CCR &= ~DMA_CCR_MSIZE;
+    DMA1_Channel5->CCR &= ~DMA_CCR_PSIZE;
+    DMA1_Channel5->CCR |= DMA_CCR_MINC;
+    DMA1_Channel5->CCR |= DMA_CCR_CIRC;
+    DMA1_Channel5->CCR |= DMA_CCR_MSIZE_0;
+    DMA1_Channel5->CCR |= DMA_CCR_PSIZE_0;
 
-    init_spi1_slow();
-    sdcard_io_high_speed();
+    // asm("wfi");
+    // for (;;)
+    //     ;
+}
+
+void enable_dma(void)
+{
+    DMA1_Channel5->CCR |= DMA_CCR_EN;
+}
+
+//============================================================================
+// init_tim15() for DMA
+//============================================================================
+void init_tim15(void)
+{
+    RCC->APB2ENR |= RCC_APB2ENR_TIM15EN;
+    TIM15->PSC = 4799;
+    TIM15->ARR = 9;
+    TIM15->DIER |= TIM_DIER_UDE;
+    TIM15->CR1 = TIM_CR1_CEN;
 }
 //===========================================================================
 // init_wavetable()
 // Write the pattern for a complete cycle of a sine wave into the
 // wavetable[] array.
 //===========================================================================
-unsigned char buffer[10];
-FILE *ptr;
-
 void init_wavetable(void)
 {
-    ptr = fopen("test.bin", "rb"); // r for read, b for binary
-    if (ptr == NULL)
-    {
-        return;
-    }
-
-    fread(buffer, sizeof(buffer), 1, ptr);
-    fclose(ptr);
-    for (int i = 0; i < N && i < sizeof(buffer); i++)
-    {
-        wavetable[i] = buffer[i];
-    }
-    // wavetable[i] = 32767 * sin(2 * M_PI * i / N);
-    // TODO
-    // read the data from a file on the sd card
-}
-
-//============================================================================
-// set_freq()
-//============================================================================
-void set_freq(int chan, float f)
-{
-    if (chan == 0)
-    {
-        if (f == 0.0)
-        {
-            step0 = 0;
-            offset0 = 0;
-        }
-        else
-            step0 = (f * N / RATE) * (1 << 16);
-    }
-}
-
-void setup_dac(void)
-{
-    RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
-    GPIOA->MODER |= 0x300;
-    RCC->APB1ENR |= RCC_APB1ENR_DACEN;
-    DAC1->CR &= ~DAC_CR_TSEL1;
-    DAC1->CR |= DAC_CR_TEN1;
-    DAC1->CR |= DAC_CR_EN1;
-}
-
-//============================================================================
-// Timer 6 ISR
-//============================================================================
-// Write the Timer 6 ISR here.  Be sure to give it the right name.
-void TIM6_IRQHandler()
-{
-    TIM6->SR &= ~TIM_SR_UIF; // Remember to acknowledge the interrupt here!
-    offset0 += step0;
-
-    if (offset0 >= (N << 16))
-    {
-        offset0 -= (N << 16);
-    }
-
-    int samp = wavetable[offset0 >> 16];
-    samp *= volume;
-    samp = samp >> 17;
-    samp += 2048;
-    DAC->DHR12R1 = samp;
-}
-//============================================================================
-// init_tim6()
-//============================================================================
-void init_tim6(void)
-{
-    RCC->APB1ENR |= RCC_APB1ENR_TIM6EN;
-    TIM6->PSC = (480000 / RATE) - 1;
-    TIM6->ARR = (100) - 1;
-    TIM6->DIER |= TIM_DIER_UIE;
-    NVIC->ISER[0] = 1 << TIM6_IRQn;
-    TIM6->CR1 |= TIM_CR1_CEN;
-    TIM6->CR2 &= ~TIM_CR2_MMS_0;
-    TIM6->CR2 |= TIM_CR2_MMS_1;
-    TIM6->CR2 &= ~TIM_CR2_MMS_2;
-}
-
-int main()
-{
-    internal_clock();
-    init_usart5();
-    enable_tty_interrupt();
-    setbuf(stdin, 0);
-    setbuf(stdout, 0);
-    setbuf(stderr, 0);
-    // command_shell();
-    LCD_Setup();
-    srand(time(0));
-
-    initialLCD();
-    setup_tim7();
-
-    // workerLCD();
-}
-
-void initialLCD()
-{
-    LCD_DrawFillRectangle(0, 0, 320, 320, WHITE);
-    LCD_DrawLine(120, 0, 120, 320, BLACK);
-
-    // srand(time(NULL));
-    // void (*arrowFunctions[])() = {drawUP, drawDOWN, drawLEFT, drawRIGHT};
-
-    // for(int i = 0; i < 320; i++) //up arrow
+    // f_open(ptr, "test.bin", 'r'); // r for read, b for binary
+    // if (ptr == NULL)
     // {
-    //     if(170-i <= 0) break;
-
-    //     LCD_DrawLine(180, 170-i, 180, 220-i, BLACK);
-    //     LCD_DrawLine(180, 220-i, 150, 200-i, BLACK);
-    //     LCD_DrawLine(180, 220-i, 210, 200-i, BLACK);
-
-    //     LCD_DrawLine(180, 220-i, 150, 200-i, WHITE);
-    //     LCD_DrawLine(180, 220-i, 210, 200-i, WHITE);
-    //     LCD_DrawLine(180, 170-i, 180, 220-i, WHITE);
-
-    //     // LCD_DrawFillRectangle(0,0,320,320,WHITE);
-    //     // LCD_DrawLine(120,0,120,320,BLACK);
-
+    //     printf("k");
+    //     return;
     // }
-}
 
-void drawUP(int lr, int bw) // lr = left (0) or right (1) side arrow, inc = increment down by inc, bw = black or white
-{
-    if (lr == 0)
-    { // left
-        LCD_DrawLine(180, 170 - inc, 180, 220 - inc, (bw == 0) ? BLACK : WHITE);
-        LCD_DrawLine(180, 220 - inc, 150, 200 - inc, (bw == 0) ? BLACK : WHITE); // up arrow
-        LCD_DrawLine(180, 220 - inc, 210, 200 - inc, (bw == 0) ? BLACK : WHITE);
-    }
-    else
-    { // right
-        LCD_DrawLine(180, 170 - inc, 180, 220 - inc, (bw == 0) ? BLACK : WHITE);
-        LCD_DrawLine(180, 220 - inc, 150, 200 - inc, (bw == 0) ? BLACK : WHITE); // up arrow
-        LCD_DrawLine(180, 220 - inc, 210, 200 - inc, (bw == 0) ? BLACK : WHITE);
-    }
-}
-
-void drawDOWN(int lr, int bw)
-{
-    if (lr == 0)
+    // UINT br = 0;
+    // f_read(ptr, buffer, sizeof(buffer), &br);
+    // // fread(buffer, sizeof(buffer), 1, ptr);
+    // f_close(ptr);
+    // for (int i = 0; i < N && i < sizeof(buffer); i++)
+    // {
+    //     wavetable[i] = buffer[i];
+    //     printf("vibes: %c", buffer[i]);
+    // }
+    // // wavetable[i] = 32767 * sin(2 * M_PI * i / N);
+    // // TODO
+    // // read the data from a file on the sd card
+    // Mount the SD card
+    if (f_mount(&fs, WAV_FILE_PATH, 0) != 0)
     {
-        LCD_DrawLine(180, 170 - inc, 180, 220 - inc, (bw == 0) ? BLACK : WHITE);
-        LCD_DrawLine(180, 170 - inc, 150, 190 - inc, (bw == 0) ? BLACK : WHITE); // down arrow
-        LCD_DrawLine(180, 170 - inc, 210, 190 - inc, (bw == 0) ? BLACK : WHITE);
-    }
-    else
-    {
-        LCD_DrawLine(180, 170 - inc, 180, 220 - inc, (bw == 0) ? BLACK : WHITE);
-        LCD_DrawLine(180, 170 - inc, 150, 190 - inc, (bw == 0) ? BLACK : WHITE); // down arrow
-        LCD_DrawLine(180, 170 - inc, 210, 190 - inc, (bw == 0) ? BLACK : WHITE);
-    }
-}
-
-void drawLEFT(int lr, int bw)
-{
-    if (lr == 0)
-    {
-        LCD_DrawLine(155, 220 - inc, 205, 220 - inc, (bw == 0) ? BLACK : WHITE);
-        LCD_DrawLine(205, 220 - inc, 185, 190 - inc, (bw == 0) ? BLACK : WHITE); // left arrow
-        LCD_DrawLine(205, 220 - inc, 185, 250 - inc, (bw == 0) ? BLACK : WHITE);
-    }
-    else
-    {
-        LCD_DrawLine(155, 220 - inc, 205, 220 - inc, (bw == 0) ? BLACK : WHITE);
-        LCD_DrawLine(205, 220 - inc, 185, 190 - inc, (bw == 0) ? BLACK : WHITE); // left arrow
-        LCD_DrawLine(205, 220 - inc, 185, 250 - inc, (bw == 0) ? BLACK : WHITE);
-    }
-}
-
-void drawRIGHT(int lr, int bw)
-{
-    if (lr == 0)
-    {
-        LCD_DrawLine(155, 220 - inc, 205, 220 - inc, (bw == 0) ? BLACK : WHITE);
-        LCD_DrawLine(155, 220 - inc, 175, 190 - inc, (bw == 0) ? BLACK : WHITE); // right arrow
-        LCD_DrawLine(155, 220 - inc, 175, 250 - inc, (bw == 0) ? BLACK : WHITE);
-    }
-    else
-    {
-        LCD_DrawLine(155, 220 - inc, 205, 220 - inc, (bw == 0) ? BLACK : WHITE);
-        LCD_DrawLine(155, 220 - inc, 175, 190 - inc, (bw == 0) ? BLACK : WHITE); // right arrow
-        LCD_DrawLine(155, 220 - inc, 175, 250 - inc, (bw == 0) ? BLACK : WHITE);
-    }
-}
-
-// void drawALL(int lr, int bw)
-// {
-//     drawUP(lr, bw);
-//     drawDOWN(lr, bw);
-//     drawLEFT(lr, bw);
-//     drawRIGHT(lr, bw);
-// }
-
-void TIM7_IRQHandler()
-{
-    TIM7->SR &= ~TIM_SR_UIF;
-    void (*arrowFunctions[])(int, int) = {drawLEFT, drawDOWN, drawUP, drawRIGHT};
-
-    // LCD_DrawFillRectangle(150,0,210,320,WHITE); //erasure left
-    // drawALL(0,1);
-    (*arrowFunctions[randomIndex])(0, 1);
-    inc++;
-
-    if (inc == 150)
-    {
-        inc = 0;
+        printf("SD Card mount failed\n");
         return;
     }
 
-    if (inc == 0)
+    // Open the WAV file in read mode
+    if (f_open(&file, WAV_FILE_PATH, FA_OPEN_ALWAYS) != FR_OK)
     {
-        randomIndex = rand() % 4;
-        (*arrowFunctions[randomIndex])(0, 0);
-        inc++;
-    }
-    else
-    {
-        (*arrowFunctions[randomIndex])(0, 0);
-    }
-}
-
-void setup_tim7()
-{
-    RCC->APB1ENR |= RCC_APB1ENR_TIM7EN;
-    TIM7->PSC = 1000000 - 1;
-    TIM7->ARR = 24 - 1;
-    TIM7->DIER |= TIM_DIER_UIE;
-    NVIC->ISER[0] = 1 << TIM7_IRQn;
-    TIM7->CR1 |= TIM_CR1_CEN;
-}
-
-#endif
-
-//#ifdef MUSIC
-
-#include <math.h> // for M_PI
-#include <stdio.h>
-#include "ff.h"
-
-int msg_index = 0;
-uint16_t msg[8] = {0x0000, 0x0100, 0x0200, 0x0300, 0x0400, 0x0500, 0x0600, 0x0700};
-extern const char font[];
-uint8_t col;
-
-#define N 1000
-#define RATE 20000
-short int wavetable[N];
-int step0 = 0;
-int offset0 = 0;
-int step1 = 0;
-int offset1 = 0;
-uint32_t volume = 2048;
-
-// uses spi2 for sd card
-void init_spi2_slow()
-{
-
-    RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
-    RCC->APB2ENR |= RCC_APB1ENR_SPI2EN;
-
-    GPIOB->MODER &= ~0xfc0;
-    GPIOB->MODER |= 0xa80;
-
-    GPIOB->AFR[0] |= (5 << (3 * 4)) | (5 << (4 * 4)) | (5 << (5 * 4));
-
-    SPI2->CR1 &= ~SPI_CR1_SPE;
-    SPI2->CR1 |= SPI_CR1_MSTR;
-    SPI2->CR2 |= SPI_CR2_DS;
-    SPI2->CR1 |= SPI_CR1_BR;                // max baud rate
-    SPI2->CR1 |= SPI_CR1_SSM | SPI_CR1_SSI; // enables software slave management and internal slave select
-    SPI2->CR2 |= SPI_CR2_FRXTH;             // sets FIFO reception threshold for immediate 8-bit release
-
-    SPI2->CR1 |= SPI_CR1_SPE; // enables SPI1
-}
-
-void disable_sdcard()
-{
-    GPIOB->BSRR |= GPIO_BSRR_BS_2;
-}
-
-void enable_sdcard()
-{
-    GPIOB->BRR |= GPIO_BRR_BR_2;
-}
-
-void init_sdcard_io()
-{
-    init_spi2_slow();
-    RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
-    GPIOB->MODER &= ~0x30;
-    GPIOB->MODER |= 0x10; // Configures PB2 as an output
-    disable_sdcard();
-}
-
-void sdcard_io_high_speed()
-{
-    SPI2->CR1 &= ~SPI_CR1_SPE;
-    // NOT SURE IF THIS IS THE CORRECT VALUE
-    SPI2->CR1 |= SPI_CR1_BR_2; // Set the SPI1 Baud Rate register so that the clock rate is 12 MHz.
-    //(You may need to set this lower if your SD card does not reliably work at this rate.)
-    SPI2->CR1 |= SPI_CR1_SPE;
-}
-
-//===========================================================================
-// init_wavetable()
-// Write the pattern for a complete cycle of a sine wave into the
-// wavetable[] array.
-//===========================================================================
-unsigned char buffer[N];
-FIL *ptr;
-
-int __io_putchar(int ch)
-{
-    // Code to send `ch` to UART or other debug interface
-    return ch;
-}
-
-void init_wavetable(void)
-{
-    f_open(ptr, "test.bin", 'r'); // r for read, b for binary
-    if (ptr == NULL)
-    {
-        printf("k");
+        printf("Failed to open WAV file\n");
         return;
     }
 
-    UINT br = 0;
-    f_read(ptr, buffer, sizeof(buffer), &br);
-   // fread(buffer, sizeof(buffer), 1, ptr);
-    f_close(ptr);
-    for (int i = 0; i < N && i < sizeof(buffer); i++)
+    // Read the WAV file header (first 44 bytes for standard WAV header)
+    BYTE header[44]; // Standard WAV header size is 44 bytes
+    if (f_read(&file, header, 44, &br) != FR_OK || br != 44)
     {
-        wavetable[i] = buffer[i];
-        printf("vibes: %c", buffer[i]);
+        printf("Error reading WAV header\n");
+        f_close(&file);
+        return;
     }
-    // wavetable[i] = 32767 * sin(2 * M_PI * i / N);
-    // TODO
-    // read the data from a file on the sd card
+
+    // Now skip the header and start reading audio data
+    // Assuming the WAV file is PCM data in the format: 8-bit, mono, 24000 Hz
+    // The actual audio data starts after the header, so use f_read to fetch that data
+    while (f_read(&file, buffer, sizeof(buffer), &br) == 1 && br > 0)
+    {
+        // Process the audio data in the buffer (e.g., DMA, DAC playback)
+        for (int i = 0; i < br; i++)
+        {
+            wavetable[i] = buffer[i];               // Assuming wavetable[] is set up correctly
+            printf("Read sample: %d\n", buffer[i]); // Print the byte value (adjust this if needed)
+        }
+    }
+
+    // Close the file
+    f_close(&file);
 }
 
 //============================================================================
@@ -874,36 +310,31 @@ void init_tim6(void)
 
 int main(void)
 {
-    
     internal_clock();
     init_usart5();
     setbuf(stdin, 0);
     setbuf(stdout, 0);
     setbuf(stderr, 0);
-    // Initialize the display to something interesting to get started.
-    //init_wavetable();
-    //setup_dac();
-    //init_tim6();
-    //command_shell();
+    // command_shell();
+    init_wavetable();
+    setup_dac();
+    init_tim6();
+
     printf("test");
-    for(;;) {
+    for (;;)
+    {
         char c = getchar();
         putchar(c);
     }
-    return 1;
 
-
-#define ONE_TONE
 #ifdef ONE_TONE
     for (;;)
     {
-        //float f = getfloat();
+        // float f = getfloat();
         set_freq(0, 1000);
     }
 #endif
 
-    // demonstrate part 4
-// #define MIX_TONES
 #ifdef MIX_TONES
     for (;;)
     {
@@ -914,6 +345,6 @@ int main(void)
             set_freq(1, getfloat());
     }
 #endif
-}
 
-//#endif
+    return 1;
+}
