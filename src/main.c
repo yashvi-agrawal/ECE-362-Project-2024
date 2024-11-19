@@ -20,6 +20,7 @@ void internal_clock();
 
 #define STEP6
 #define SHELL
+#define LED
 
 void init_usart5() {
     // TODO
@@ -291,6 +292,7 @@ void TIM7_IRQHandler()
     incL++;
     incR++;
     checker = 0;
+    // setrgb(0x0);
 
     if((incL - 1) == 0)
     {
@@ -301,6 +303,8 @@ void TIM7_IRQHandler()
     {
         incL = 0;
         falling_key = 'A';
+        setrgb(0x000000);
+
 
     }
     else
@@ -325,6 +329,8 @@ void TIM7_IRQHandler()
         {
             incR = 0;
             falling_key = 'A';
+            setrgb(0x000000);
+
         }
     else
         {
@@ -553,13 +559,16 @@ void update_score(char falling_key)
     char one = '1';
 
 
+
     if (user_input != 0 && key_pressed == 0)
     {
+
         key_pressed = 1;
         // Check if the user input matches the falling key
         if (user_input == one)
         {
             gameEnd = 0;
+            setrgb(0x000000);
             LCD_Clear(WHITE);
             initialLCD();
             setup_tim7();
@@ -569,15 +578,19 @@ void update_score(char falling_key)
             gameEnd = 1;
             LCD_Clear(WHITE);
             heart();
+            setrgb(0x223300);
         }
         else{
         if (user_input == falling_key)
         {
             score++; // Correct key press, increment score
+            setrgb(0x000055);
+
         }
         else
         {
             score--; // Incorrect key press, decrement score
+            setrgb(0x550000);
         }
 
         if (score < 0)
@@ -651,6 +664,73 @@ void setup_tim14()
 
 #endif
 
+#ifdef LED
+
+void setup_tim1(void) {
+
+
+    RCC->APB2ENR |= RCC_APB2ENR_TIM1EN;
+    RCC->AHBENR |=  RCC_AHBENR_GPIOAEN;
+
+    GPIOA->MODER &= ~(0xff0000);
+    GPIOA->MODER |= 0xaa0000;
+
+    GPIOA->AFR[1] &= ~(GPIO_AFRH_AFRH0 | GPIO_AFRH_AFRH1 | GPIO_AFRH_AFRH2 | GPIO_AFRH_AFRH3);
+    GPIOA->AFR[1] |= 0x2222;
+
+    TIM1->BDTR |= TIM_BDTR_MOE;
+
+    TIM1->PSC = 1-1;
+    TIM1->ARR = 2399;
+
+    TIM1->CCMR1 |= (TIM_CCMR1_OC1M_1 | TIM_CCMR1_OC1M_2);
+    TIM1->CCMR1 &= ~TIM_CCMR1_OC1M_0;
+
+    TIM1->CCMR1 |= (TIM_CCMR1_OC2M_1 | TIM_CCMR1_OC2M_2);
+    TIM1->CCMR1 &= ~TIM_CCMR1_OC2M_0;
+
+    TIM1->CCMR2 |= (TIM_CCMR2_OC3M_1 | TIM_CCMR2_OC3M_2);
+    TIM1->CCMR2 &= ~TIM_CCMR2_OC3M_0;
+
+    TIM1->CCMR2 |= (TIM_CCMR2_OC4M_1 | TIM_CCMR2_OC4M_2);
+    TIM1->CCMR2 &= ~TIM_CCMR2_OC4M_0;
+
+    TIM1->CCMR2 |= TIM_CCMR2_OC4PE;
+
+    TIM1->CR1 |= TIM_CR1_CEN;
+    TIM1->CCER |= (TIM_CCER_CC1E | TIM_CCER_CC2E | TIM_CCER_CC3E | TIM_CCER_CC4E);
+
+}
+
+
+// Helper function for you
+// Accept a byte in BCD format and convert it to decimal
+uint8_t bcd2dec(uint8_t bcd) {
+    // Lower digit
+    uint8_t dec = bcd & 0xF;
+
+    // Higher digit
+    dec += 10 * (bcd >> 4);
+    return dec;
+}
+
+void setrgb(int rgb) {
+    uint8_t b = bcd2dec(rgb & 0xFF);
+    uint8_t g = bcd2dec((rgb >> 8) & 0xFF);
+    uint8_t r = bcd2dec((rgb >> 16) & 0xFF);
+
+    // TODO: Assign values to TIM1->CCRx registers
+    // Remember these are all percentages
+    // Also, LEDs are on when the corresponding PWM output is low
+    // so you might want to invert the numbers.
+    TIM1->CCR1 = (100 - r) * 24;
+    TIM1->CCR2 = (100 - g) * 24;
+    TIM1->CCR3 = (100 - b) * 0.01 * 2400;
+    
+}
+
+#endif
+
 int main()
 {
     internal_clock();
@@ -677,7 +757,9 @@ int main()
 
     // workerLCD();*/
 
+    setup_tim1();
 
+    setrgb(0x551111);
 
     LCD_Setup();
     heart();
