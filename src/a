@@ -22,18 +22,16 @@ const char *username = "htasdem";
 #include "ff.h"
 
 void internal_clock();
-                                
+
 // DAC
 #define N 1000
 #define RATE 20000
 #define BUFFER_SIZE 1024          // Adjust size as needed for your buffer
-// #define WAV_FILE_PATH "./inthemood8.wav" // Path to your WAV file
-// #define WAV_FILE_PATH "./sine8.wav" 
-// #define WAV_FILE_PATH "./s8.wav" 
-#define WAV_FILE_PATH "./int.wav"
+//#define WAV_FILE_PATH "./inthemood-s8.wav" // Path to your WAV file
+#define WAV_FILE_PATH "./sine8.wav" 
 
 short int wavetable[N];
-int step0 = 1;
+int step0 = 0;
 int offset0 = 0;
 uint8_t col; // the column being scanned
 uint32_t volume = 2048;
@@ -43,13 +41,12 @@ void print(const char str[]);
 float getfloat(void); // read a floating-point number from keypad
 void printfloat(float f);
 
-unsigned char buffer[1000];
+unsigned char buffer[10];
 FILE *ptr;
 FATFS fs;    // FatFS file system object
 FIL file;    // File object to store information about the open file
 FRESULT res; // Result of operations
-UINT btr = 1000;
-UINT br;
+UINT br = 0;
 
 //============================================================================
 // Varables for boxcar averaging.
@@ -385,15 +382,14 @@ void init_wavetable(void)
     // Now skip the header and start reading audio data
     // Assuming the WAV file is PCM data in the format: 8-bit, mono, 24000 Hz
     // The actual audio data starts after the header, so use f_read to fetch that data
-    while (f_read(&file, buffer, btr, &br) == 0 && btr > 0)
+    while (f_read(&file, buffer, sizeof(buffer), &br) == 1 && br > 0)
     {
         // Process the audio data in the buffer (e.g., DMA, DAC playback)
-        for (int i = 0; i < btr; i++)
+        for (int i = 0; i < br; i++)
         {
             wavetable[i] = buffer[i];               // Assuming wavetable[] is set up correctly
             printf("Read sample: %d\n", buffer[i]); // Print the byte value (adjust this if needed)
         }
-        btr=0;
     }
 
     // Close the file
@@ -403,19 +399,19 @@ void init_wavetable(void)
 //============================================================================
 // set_freq()
 //============================================================================
-// void set_freq(int chan, float f)
-// {
-//     if (chan == 0)
-//     {
-//         if (f == 0.0)
-//         {
-//             step0 = 0;
-//             offset0 = 0;
-//         }
-//         else
-//             step0 = (f * N / RATE) * (1 << 16);
-//     }
-// }
+void set_freq(int chan, float f)
+{
+    if (chan == 0)
+    {
+        if (f == 0.0)
+        {
+            step0 = 0;
+            offset0 = 0;
+        }
+        else
+            step0 = (f * N / RATE) * (1 << 16);
+    }
+}
 
 void setup_dac(void)
 {
@@ -436,14 +432,14 @@ void TIM6_DAC_IRQHandler()
     TIM6->SR &= ~TIM_SR_UIF; // Remember to acknowledge the interrupt here!
     offset0 += step0;
 
-    if (offset0 >= (N << 12))
+    if (offset0 >= (N << 16))
     {
-        offset0 -= (N << 12);
+        offset0 -= (N << 16);
     }
 
-    int samp = wavetable[offset0 >> 1];
+    int samp = wavetable[offset0 >> 16];
     samp *= volume;
-    samp = samp >> 12;
+    samp = samp >> 17;
     samp += 2048;
     DAC->DHR8R1 = samp;
 }
@@ -481,20 +477,14 @@ int main(void)
     setup_dac();
     init_tim6();
 
-#define TEST_MUSIC
-#ifdef TEST_MUSIC
-    while(1)
+
+#ifdef ONE_TONE
+    for (;;)
     {
-        ;;
+        //the place where the disgusting line used to be
+        set_freq(0, 500);
     }
 #endif
-// #ifdef ONE_TONE
-//     for (;;)
-//     {
-//         //the place where the disgusting line used to be
-//         set_freq(0, 500);
-//     }
-// #endif
 
 #ifdef MIX_TONES
     for (;;)
