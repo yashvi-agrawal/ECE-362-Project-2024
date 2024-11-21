@@ -27,7 +27,7 @@ void internal_clock();
 #define N 1000
 #define RATE 20000
 #define BUFFER_SIZE 1024          // Adjust size as needed for your buffer
-#define WAV_FILE_PATH "./sine8.wav" // Path to your WAV file
+#define WAV_FILE_PATH "./inthemood-s8.wav" // Path to your WAV file
 
 short int wavetable[N];
 int step0 = 0;
@@ -111,12 +111,70 @@ void init_usart5()
         ;
 }
 
-int __io_putchar(int ch)
-{
-    // Code to send `ch` to UART or other debug interface
-    return ch;
+
+// TODO DMA data structures
+#define FIFOSIZE 16
+char serfifo[FIFOSIZE];
+int seroffset = 0;
+
+
+void USART3_8_IRQHandler(void) {
+    while(DMA2_Channel2->CNDTR != sizeof serfifo - seroffset) {
+        if (!fifo_full(&input_fifo))
+            insert_echo_char(serfifo[seroffset]);
+        seroffset = (seroffset + 1) % sizeof serfifo;
+    }
 }
 
+void enable_tty_interrupt(void) {
+    // TODO
+    USART5->CR1 |= USART_CR1_RXNEIE;
+
+    NVIC_EnableIRQ(USART3_8_IRQn);
+    USART5->CR3 |= USART_CR3_DMAR; 
+
+    RCC->AHBENR |= RCC_AHBENR_DMA2EN;
+    DMA2->CSELR |= DMA2_CSELR_CH2_USART5_RX;
+    DMA2_Channel2->CCR &= ~DMA_CCR_EN;  // First make sure DMA is turned off
+
+    // The DMA channel 2 configuration goes here
+    DMA2_Channel2->CMAR = &serfifo;
+    DMA2_Channel2->CPAR = &(USART5->RDR);
+    DMA2_Channel2->CNDTR |= FIFOSIZE;
+    DMA2_Channel2->CCR &= ~(DMA_CCR_DIR | DMA_CCR_HTIE | DMA_CCR_TCIE);
+    DMA2_Channel2->CCR &= ~(DMA_CCR_MSIZE_1|DMA_CCR_MSIZE_0|DMA_CCR_PSIZE_1|DMA_CCR_PSIZE_0);
+    DMA2_Channel2->CCR |= DMA_CCR_MINC;
+    DMA2_Channel2->CCR &= ~DMA_CCR_PINC;
+    DMA2_Channel2->CCR |= DMA_CCR_CIRC;
+    DMA2_Channel2->CCR &= ~DMA_CCR_MEM2MEM;
+    DMA2_Channel2->CCR |= DMA_CCR_PL_1 | DMA_CCR_PL_0;
+    DMA2_Channel2->CCR |= DMA_CCR_EN;
+}
+
+// Works like line_buffer_getchar(), but does not check or clear ORE nor wait on new characters in USART
+char interrupt_getchar() {
+    // TODO
+    while(fifo_newline(&input_fifo) == 0) {
+        asm volatile ("wfi"); // wait for an interrupt
+    }
+    return fifo_remove(&input_fifo);
+}
+
+int __io_putchar(int c) {
+    // TODO copy from STEP2
+    if(c == '\n'){
+        while(!(USART5->ISR & USART_ISR_TXE));
+        USART5->TDR = '\r';
+    }
+    while(!(USART5->ISR & USART_ISR_TXE));
+    USART5->TDR = c;
+    return c;
+}
+
+int __io_getchar(void) {
+    // TODO Use interrupt_getchar() instead of line_buffer_getchar()
+    return interrupt_getchar();
+}
 void init_spi1_slow()
 {
     // PB3 (SCK), PB4 (MISO), and PB5 (MOSI)
@@ -141,12 +199,12 @@ void init_spi1_slow()
 
 void enable_sdcard()
 {
-    GPIOB->BRR |= GPIO_BRR_BR_2;
+    GPIOB->BRR = GPIO_BRR_BR_2;
 }
 
 void disable_sdcard()
 {
-    GPIOB->BSRR |= GPIO_BSRR_BS_2;
+    GPIOB->BSRR = GPIO_BSRR_BS_2;
 }
 
 void init_sdcard_io()
@@ -159,8 +217,8 @@ void init_sdcard_io()
 void sdcard_io_high_speed()
 {
     SPI1->CR1 &= ~SPI_CR1_SPE;
-    SPI1->CR1 |= 0x8;
-    SPI1->CR1 &= ~(SPI_CR1_BR);
+    // SPI1->CR1 |= 0x8;
+    // SPI1->CR1 &= ~(SPI_CR1_BR);
     SPI1->CR1 |= SPI_CR1_SPE;
 }
 
@@ -382,7 +440,7 @@ void TIM6_DAC_IRQHandler()
     samp *= volume;
     samp = samp >> 17;
     samp += 2048;
-    DAC->DHR12R1 = samp;
+    DAC->DHR8R1 = samp;
 }
 //============================================================================
 // init_tim6()
@@ -405,13 +463,15 @@ int main(void)
     internal_clock();
     enable_ports();
     init_usart5();
-    setup_dma();
-    enable_dma();
-    init_tim15();
-    init_tim7();
-    setup_adc();
-    init_tim2();
+    enable_tty_interrupt();
+    // setup_dma();
+    // enable_dma();
+    // init_tim15();
+    // init_tim7();
+    // setup_adc();
+    // init_tim2();
     // command_shell();
+    // mount(0, NULL);
     init_wavetable();
     setup_dac();
     init_tim6();
