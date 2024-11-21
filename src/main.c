@@ -27,7 +27,7 @@ void internal_clock();
 #define N 1000
 #define RATE 20000
 #define BUFFER_SIZE 1024          // Adjust size as needed for your buffer
-#define WAV_FILE_PATH "sine8.wav" // Path to your WAV file
+#define WAV_FILE_PATH "./sine8.wav" // Path to your WAV file
 
 short int wavetable[N];
 int step0 = 0;
@@ -160,7 +160,7 @@ void sdcard_io_high_speed()
 {
     SPI1->CR1 &= ~SPI_CR1_SPE;
     SPI1->CR1 |= 0x8;
-    SPI1->CR1 &= ~(SPI_CR1_BR_2 | SPI_CR1_BR_1);
+    SPI1->CR1 &= ~(SPI_CR1_BR);
     SPI1->CR1 |= SPI_CR1_SPE;
 }
 
@@ -297,28 +297,44 @@ void init_tim2(void)
 //===========================================================================
 void init_wavetable(void)
 {
-    // f_open(ptr, "test.bin", 'r'); // r for read, b for binary
-    // if (ptr == NULL)
-    // {
-    //     printf("k");
-    //     return;
-    // }
+    FRESULT fmount_result = f_mount(&fs, WAV_FILE_PATH, 1);
+    if (fmount_result != 0)
+    {
+        printf("SD Card mount failed\n");
+        return;
+    }
+    FRESULT fopen_result = f_open(&file, WAV_FILE_PATH, FA_READ);
+    // Open the WAV file in read mode
+    if (fopen_result != FR_OK)
+    {
+        printf("Failed to open WAV file\n");
+        return;
+    }
 
-    // UINT br = 0;
-    // f_read(ptr, buffer, sizeof(buffer), &br);
-    // // fread(buffer, sizeof(buffer), 1, ptr);
-    // f_close(ptr);
-    // for (int i = 0; i < N && i < sizeof(buffer); i++)
-    // {
-    //     wavetable[i] = buffer[i];
-    //     printf("vibes: %c", buffer[i]);
-    // }
-    // // wavetable[i] = 32767 * sin(2 * M_PI * i / N);
-    // // TODO
-    // // read the data from a file on the sd card
-    // Mount the SD card
-    for (int i = 0; i < N; i++)
-            wavetable[i] = 32767 * sin(2 * M_PI * i / N);
+    // Read the WAV file header (first 44 bytes for standard WAV header)
+    BYTE header[44]; // Standard WAV header size is 44 bytes
+    if (f_read(&file, header, 44, &br) != FR_OK || br != 44)
+    {
+        printf("Error reading WAV header\n");
+        f_close(&file);
+        return;
+    }
+
+    // Now skip the header and start reading audio data
+    // Assuming the WAV file is PCM data in the format: 8-bit, mono, 24000 Hz
+    // The actual audio data starts after the header, so use f_read to fetch that data
+    while (f_read(&file, buffer, sizeof(buffer), &br) == 1 && br > 0)
+    {
+        // Process the audio data in the buffer (e.g., DMA, DAC playback)
+        for (int i = 0; i < br; i++)
+        {
+            wavetable[i] = buffer[i];               // Assuming wavetable[] is set up correctly
+            printf("Read sample: %d\n", buffer[i]); // Print the byte value (adjust this if needed)
+        }
+    }
+
+    // Close the file
+    f_close(&file);
 }
 
 //============================================================================
